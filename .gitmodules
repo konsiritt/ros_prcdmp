@@ -1,0 +1,3 @@
+[submodule "prcdmp"]
+	path = prcdmp
+	url = https://gitlab.lrz.de/ga45des/prcdmp.git
