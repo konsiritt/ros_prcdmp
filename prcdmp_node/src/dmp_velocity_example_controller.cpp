@@ -71,7 +71,7 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   std::string datasetPath = "set1"; //TODO: get via command line input or so?!
 
   // handles config file access
-  std::string basePackagePath = ros::package::getPath("prcdmp_node");
+  std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/");
   std::cout<<"this is the package base path: "<<basePackagePath<<std::endl;
   Config config(datasetPath, basePackagePath);
 
@@ -112,6 +112,20 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
   // initialize dmp object
   DiscreteDMP dmp(dofs, nBFs, dt, y0v, goalv, w, gainA, gainB);
+
+  double timesteps = dmp.getTimesteps();
+  std::cout<<"amount of timesteps for current dmp: "<<timesteps<<std::endl;
+
+
+  dmp.step(externalForce, tau);
+  std::vector<double> dq = dmp.getDY();
+
+  franka::JointVelocities velocities{{0, 0, 0, 0, 0, 0, 0}};
+  for (int i=0;i<7;i++)
+  {
+    velocities.dq[i]= dq[i];
+    std::cout<<dq[i]<<",";
+  }
 
 
   return true;
