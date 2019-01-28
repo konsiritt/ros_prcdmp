@@ -14,6 +14,8 @@ class Config
 public:
     Config(std::string datasetPath);
 
+    Config(std::string datasetPath, std::string basePath);
+
     void fillTrajectoryPath(int episodeNr);
 
     // Getters

@@ -9,6 +9,7 @@
 #include <hardware_interface/joint_command_interface.h>
 #include <pluginlib/class_list_macros.h>
 #include <ros/ros.h>
+#include <ros/package.h>
 
 namespace prcdmp_node {
 
@@ -65,12 +66,14 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
     return false;
   }
 
-/*
+
   // load config data from files
   std::string datasetPath = "set1"; //TODO: get via command line input or so?!
 
   // handles config file access
-  Config config(datasetPath);
+  std::string basePackagePath = ros::package::getPath("prcdmp_node");
+  std::cout<<"this is the package base path: "<<basePackagePath<<std::endl;
+  Config config(datasetPath, basePackagePath);
 
   //fill data from json to variables
   int dofs = config.getDmpJson()["dofs"].asInt();
@@ -94,7 +97,6 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   int episodeNr = config.getDataJson()["current_episode"].asInt()-1;
   config.fillTrajectoryPath(episodeNr);
 
-  Interface roboInter;
   std::vector<double> externalForce;
   std::vector<std::vector<double>> w ;
   if (episodeNr ==0) {
@@ -110,7 +112,7 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
   // initialize dmp object
   DiscreteDMP dmp(dofs, nBFs, dt, y0v, goalv, w, gainA, gainB);
-*/
+
 
   return true;
 }

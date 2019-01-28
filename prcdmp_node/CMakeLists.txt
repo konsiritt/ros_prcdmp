@@ -37,6 +37,10 @@ catkin_package(
   DEPENDS Franka
 )
 
+INCLUDE_DIRECTORIES(include)
+
+add_subdirectory(src)
+
 add_library(prcdmp_node
   src/dmp_velocity_example_controller.cpp
 )
@@ -51,7 +55,7 @@ link_directories(${CMAKE_HOME_DIRECTORY}/lib)
 target_link_libraries(prcdmp_node PUBLIC
   ${Franka_LIBRARIES}
   ${catkin_LIBRARIES}
-  #PRCDMP_DMP PRCDMP_UTILS
+  DMP UTILS
 )
 
 target_include_directories(prcdmp_node SYSTEM PUBLIC

@@ -2,7 +2,38 @@
 
 Config::Config(std::string datasetPath)
 {
-    basePath = "../../data/";
+    basePath = "config/data/";
+    basePath = basePath + datasetPath ;
+    confBasePath = basePath+ std::string("/conf/");
+    dmpConfPath = confBasePath + std::string("DMP.json");
+    dataConfPath = confBasePath + std::string("dataset.json");
+    initialWPath = confBasePath+std::string("weights.csv");
+
+    if (!fileExists(dmpConfPath))
+    {
+        std::cerr<<"The DMP config Path is not correct\nHint: check the given dataset parameter"<<std::endl;
+    }
+
+    if (!fileExists(dataConfPath))
+    {
+        std::cerr<<"The provided data config Path is not correct\nHint: check the given dataset parameter"<<std::endl;
+    }
+
+    if (!fileExists(initialWPath))
+    {
+        std::cerr<<"The weights Path is not correct\nHint: check the given dataset parameter"<<std::endl;
+    }
+
+    dmpconf = std::ifstream (dmpConfPath, std::ifstream::binary);
+    dataconf = std::ifstream (dataConfPath, std::ifstream::binary);
+
+    dmpConfReader.parse(dmpconf, dmpJson);
+    dataConfReader.parse(dataconf, dataJson);
+}
+
+Config::Config(std::string datasetPath, std::string basePath_)
+{
+    basePath = basePath_;
     basePath = basePath + datasetPath ;
     confBasePath = basePath+ std::string("/conf/");
     dmpConfPath = confBasePath + std::string("DMP.json");

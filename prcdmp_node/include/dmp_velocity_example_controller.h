@@ -12,12 +12,12 @@
 #include <ros/node_handle.h>
 #include <ros/time.h>
 
-//#include "UTILS/Config.h"
-//#include <string>
-//#include "DMP/DMP.hpp"
-//#include "DMP/DiscreteDMP.hpp"
-//#include <jsoncpp/json/value.h>
-//#include <jsoncpp/json/json.h>
+#include "UTILS/Config.h"
+#include <string>
+#include "DMP/DMP.hpp"
+#include "DMP/DiscreteDMP.hpp"
+#include <jsoncpp/json/value.h>
+#include <jsoncpp/json/json.h>
 
 
 namespace prcdmp_node {
