@@ -10,22 +10,22 @@
 #include <pluginlib/class_list_macros.h>
 #include <ros/ros.h>
 
-namespace franka_example_controllers {
+namespace prcdmp_node {
 
-bool JointVelocityExampleController::init(hardware_interface::RobotHW* robot_hardware,
+bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardware,
                                           ros::NodeHandle& node_handle) {
   velocity_joint_interface_ = robot_hardware->get<hardware_interface::VelocityJointInterface>();
   if (velocity_joint_interface_ == nullptr) {
     ROS_ERROR(
-        "JointVelocityExampleController: Error getting velocity joint interface from hardware!");
+        "DmpVelocityExampleController: Error getting velocity joint interface from hardware!");
     return false;
   }
   std::vector<std::string> joint_names;
   if (!node_handle.getParam("joint_names", joint_names)) {
-    ROS_ERROR("JointVelocityExampleController: Could not parse joint names");
+    ROS_ERROR("DmpVelocityExampleController: Could not parse joint names");
   }
   if (joint_names.size() != 7) {
-    ROS_ERROR_STREAM("JointVelocityExampleController: Wrong number of joint names, got "
+    ROS_ERROR_STREAM("DmpVelocityExampleController: Wrong number of joint names, got "
                      << joint_names.size() << " instead of 7 names!");
     return false;
   }
@@ -35,14 +35,14 @@ bool JointVelocityExampleController::init(hardware_interface::RobotHW* robot_har
       velocity_joint_handles_[i] = velocity_joint_interface_->getHandle(joint_names[i]);
     } catch (const hardware_interface::HardwareInterfaceException& ex) {
       ROS_ERROR_STREAM(
-          "JointVelocityExampleController: Exception getting joint handles: " << ex.what());
+          "DmpVelocityExampleController: Exception getting joint handles: " << ex.what());
       return false;
     }
   }
 
   auto state_interface = robot_hardware->get<franka_hw::FrankaStateInterface>();
   if (state_interface == nullptr) {
-    ROS_ERROR("JointVelocityExampleController: Could not get state interface from hardware");
+    ROS_ERROR("DmpVelocityExampleController: Could not get state interface from hardware");
     return false;
   }
 
@@ -53,7 +53,7 @@ bool JointVelocityExampleController::init(hardware_interface::RobotHW* robot_har
     for (size_t i = 0; i < q_start.size(); i++) {
       if (std::abs(state_handle.getRobotState().q_d[i] - q_start[i]) > 0.1) {
         ROS_ERROR_STREAM(
-            "JointVelocityExampleController: Robot is not in the expected starting position for "
+            "DmpVelocityExampleController: Robot is not in the expected starting position for "
             "running this example. Run `roslaunch franka_example_controllers move_to_start.launch "
             "robot_ip:=<robot-ip> load_gripper:=<has-attached-gripper>` first.");
         return false;
@@ -61,7 +61,7 @@ bool JointVelocityExampleController::init(hardware_interface::RobotHW* robot_har
     }
   } catch (const hardware_interface::HardwareInterfaceException& e) {
     ROS_ERROR_STREAM(
-        "JointVelocityExampleController: Exception getting state handle: " << e.what());
+        "DmpVelocityExampleController: Exception getting state handle: " << e.what());
     return false;
   }
 
@@ -115,11 +115,11 @@ bool JointVelocityExampleController::init(hardware_interface::RobotHW* robot_har
   return true;
 }
 
-void JointVelocityExampleController::starting(const ros::Time& /* time */) {
+void DmpVelocityExampleController::starting(const ros::Time& /* time */) {
   elapsed_time_ = ros::Duration(0.0);
 }
 
-void JointVelocityExampleController::update(const ros::Time& /* time */,
+void DmpVelocityExampleController::update(const ros::Time& /* time */,
                                             const ros::Duration& period) {
   elapsed_time_ += period;
 
@@ -136,13 +136,13 @@ void JointVelocityExampleController::update(const ros::Time& /* time */,
   }
 }
 
-void JointVelocityExampleController::stopping(const ros::Time& /*time*/) {
+void DmpVelocityExampleController::stopping(const ros::Time& /*time*/) {
   // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
   // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
   // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
 }
 
-}  // namespace franka_example_controllers
+}  // namespace prcdmp_node
 
-PLUGINLIB_EXPORT_CLASS(franka_example_controllers::JointVelocityExampleController,
+PLUGINLIB_EXPORT_CLASS(prcdmp_node::DmpVelocityExampleController,
                        controller_interface::ControllerBase)

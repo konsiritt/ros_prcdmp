@@ -1,0 +1,8 @@
+<library path="lib/libprcdmp_node">
+  <class name="prcdmp_node/DmpVelocityExampleController" type="prcdmp_node::DmpVelocityExampleController" base_class_type="controller_interface::ControllerBase">
+    <description>
+      A controller that executes a short motion based on DMP encoded joint velocities 
+    </description>
+  </class>
+
+</library>

@@ -6,8 +6,6 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-#add_subdirectory(prcdmp)
-
 find_package(catkin REQUIRED COMPONENTS
   controller_interface
   dynamic_reconfigure

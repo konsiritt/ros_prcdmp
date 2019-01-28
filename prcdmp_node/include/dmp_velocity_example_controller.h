@@ -20,9 +20,9 @@
 //#include <jsoncpp/json/json.h>
 
 
-namespace franka_example_controllers {
+namespace prcdmp_node {
 
-class JointVelocityExampleController : public controller_interface::MultiInterfaceController<
+class DmpVelocityExampleController : public controller_interface::MultiInterfaceController<
                                            hardware_interface::VelocityJointInterface,
                                            franka_hw::FrankaStateInterface> {
  public:
@@ -39,4 +39,4 @@ class JointVelocityExampleController : public controller_interface::MultiInterfa
   //DiscreteDMP dmp;
 };
 
-}  // namespace franka_example_controllers
+}  // namespace prcdmp_node
