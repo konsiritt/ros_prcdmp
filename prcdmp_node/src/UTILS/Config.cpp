@@ -2,7 +2,7 @@
 
 Config::Config(std::string datasetPath)
 {
-    basePath = "config/data/";
+    basePath = "data/";
     basePath = basePath + datasetPath ;
     confBasePath = basePath+ std::string("/conf/");
     dmpConfPath = confBasePath + std::string("DMP.json");

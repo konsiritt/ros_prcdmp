@@ -19,6 +19,8 @@
 #include <jsoncpp/json/value.h>
 #include <jsoncpp/json/json.h>
 
+#include <franka/robot.h>
+#include <franka/robot_state.h>
 
 namespace prcdmp_node {
 
