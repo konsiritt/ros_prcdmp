@@ -27,6 +27,8 @@ public:
     DMP(int nDMPs, int nBFs, double dt, std::vector<double> &y0, std::vector<double> &goal,
             std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB, std::string pattern="discrete");
 
+    DMP(){std::cerr<<"created an empty instance of DMP"<<std::endl;};
+   
     virtual ~DMP(){};
 
     /**

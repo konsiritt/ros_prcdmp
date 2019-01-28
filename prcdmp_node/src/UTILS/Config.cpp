@@ -40,6 +40,8 @@ Config::Config(std::string datasetPath, std::string basePath_)
     dataConfPath = confBasePath + std::string("dataset.json");
     initialWPath = confBasePath+std::string("weights.csv");
 
+    std::cout<< "inside config: dmpConfPath: "<<dmpConfPath<<std::endl;
+
     if (!fileExists(dmpConfPath))
     {
         std::cerr<<"The DMP config Path is not correct\nHint: check the given dataset parameter"<<std::endl;
