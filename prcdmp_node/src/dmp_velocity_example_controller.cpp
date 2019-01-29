@@ -14,7 +14,7 @@
 namespace prcdmp_node {
 
 bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardware,
-                                          ros::NodeHandle& node_handle) {
+                                          ros::NodeHandle& node_handle) {  
   velocity_joint_interface_ = robot_hardware->get<hardware_interface::VelocityJointInterface>();
   if (velocity_joint_interface_ == nullptr) {
     ROS_ERROR(
@@ -47,28 +47,13 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
     return false;
   }
 
-  try {
-    auto state_handle = state_interface->getHandle("panda_robot");
-
-    std::array<double, 7> q_start{{0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4}};
-    for (size_t i = 0; i < q_start.size(); i++) {
-      if (std::abs(state_handle.getRobotState().q_d[i] - q_start[i]) > 0.1) {
-        ROS_ERROR_STREAM(
-            "DmpVelocityExampleController: Robot is not in the expected starting position for "
-            "running this example. Run `roslaunch franka_example_controllers move_to_start.launch "
-            "robot_ip:=<robot-ip> load_gripper:=<has-attached-gripper>` first.");
-        return false;
-      }
-    }
-  } catch (const hardware_interface::HardwareInterfaceException& e) {
-    ROS_ERROR_STREAM(
-        "DmpVelocityExampleController: Exception getting state handle: " << e.what());
-    return false;
+  std::string datasetPath;
+  if (!node_handle.getParam("data_set", datasetPath)) {
+    ROS_ERROR("Invalid or no data_set parameter provided; provide e.g. data_set:=set1");
+    return 1;
   }
 
-
-  // load config data from files
-  std::string datasetPath = "set1"; //TODO: get via command line input or so?!
+  // load DMP specific config data from files
 
   // handles config file access
   std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/");
@@ -127,6 +112,31 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
     std::cout<<dq[i]<<",";
   }
 
+
+  std::string robot_ip;
+  if (!node_handle.getParam("robot_ip", robot_ip)) {
+    ROS_ERROR("Invalid or no robot_ip parameter provided");
+    return 1;
+  }
+
+  try {
+    auto state_handle = state_interface->getHandle("panda_robot");
+
+    std::array<double, 7> q_start{{0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4}};
+    for (size_t i = 0; i < q_start.size(); i++) {
+      if (std::abs(state_handle.getRobotState().q_d[i] - q_start[i]) > 0.1) {
+        ROS_ERROR_STREAM(
+            "DmpVelocityExampleController: Robot is not in the expected starting position for "
+            "running this example. Run `roslaunch franka_example_controllers move_to_start.launch "
+            "robot_ip:=<robot-ip> load_gripper:=<has-attached-gripper>` first.");
+        return false;
+      }
+    }
+  } catch (const hardware_interface::HardwareInterfaceException& e) {
+    ROS_ERROR_STREAM(
+        "DmpVelocityExampleController: Exception getting state handle: " << e.what());
+    return false;
+  }
 
   return true;
 }
