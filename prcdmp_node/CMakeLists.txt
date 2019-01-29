@@ -55,7 +55,7 @@ link_directories(${CMAKE_HOME_DIRECTORY}/lib)
 target_link_libraries(prcdmp_node PUBLIC
   ${Franka_LIBRARIES}
   ${catkin_LIBRARIES}
-  DMP UTILS
+  DMP UTILS jsoncpp
 )
 
 target_include_directories(prcdmp_node SYSTEM PUBLIC

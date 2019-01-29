@@ -8,6 +8,7 @@
 #include <math.h>
 #include "DMP.hpp"
 #include "UTILS/trajectoryUtils.h"
+#include <iostream>
 
 class DiscreteDMP : public DMP
 {
@@ -27,6 +28,8 @@ public:
     DiscreteDMP(int nDMPs, int nBFs, double dt, std::vector<double> &y0, std::vector<double> &goal,
                 std::vector<std::vector<double>> &w, std::vector<double> &gainA,
                 std::vector<double> &gainB, std::string pattern ="discrete");
+
+    DiscreteDMP(){std::cerr<<"created an empty instance of DiscreteDMP"<<std::endl;};
 
     ~DiscreteDMP(){};
 

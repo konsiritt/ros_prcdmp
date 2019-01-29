@@ -38,7 +38,9 @@ class DmpVelocityExampleController : public controller_interface::MultiInterface
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
   ros::Duration elapsed_time_;
 
-  //DiscreteDMP dmp;
+  DiscreteDMP dmp;
+  double tau; 
+  std::vector<double> externalForce;
 };
 
 }  // namespace prcdmp_node

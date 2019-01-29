@@ -14,7 +14,7 @@
 namespace prcdmp_node {
 
 bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardware,
-                                          ros::NodeHandle& node_handle) {  
+                                          ros::NodeHandle& node_handle) {
   velocity_joint_interface_ = robot_hardware->get<hardware_interface::VelocityJointInterface>();
   if (velocity_joint_interface_ == nullptr) {
     ROS_ERROR(
@@ -47,6 +47,7 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
     return false;
   }
 
+
   std::string datasetPath;
   if (!node_handle.getParam("data_set", datasetPath)) {
     ROS_ERROR("Invalid or no data_set parameter provided; provide e.g. data_set:=set1");
@@ -59,13 +60,15 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/");
   std::cout<<"this is the package base path: "<<basePackagePath<<std::endl;
   Config config(datasetPath, basePackagePath);
+  std::cout<<"config file has been created"<<std::endl;
 
   //fill data from json to variables
   int dofs = config.getDmpJson()["dofs"].asInt();
+  std::cout<<"DOFs: "<<dofs<<std::endl;
   int nBFs = config.getDmpJson()["n_basis"].asInt();
   double dt = config.getDmpJson()["dt"].asDouble();
   double timeSpan = config.getDmpJson()["timespan"].asDouble();
-  double tau = 1.0/timeSpan;
+  tau = 1.0/timeSpan;
 
   // initialize arrays from config file
   std::array<double,7> q0;
@@ -96,22 +99,11 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   std::vector<double> goalv(goal.begin(), goal.end());
 
   // initialize dmp object
-  DiscreteDMP dmp(dofs, nBFs, dt, y0v, goalv, w, gainA, gainB);
+  DiscreteDMP dmpTemp(dofs, nBFs, dt, y0v, goalv, w, gainA, gainB);
+  dmp = dmpTemp;
 
   double timesteps = dmp.getTimesteps();
   std::cout<<"amount of timesteps for current dmp: "<<timesteps<<std::endl;
-
-
-  dmp.step(externalForce, tau);
-  std::vector<double> dq = dmp.getDY();
-
-  franka::JointVelocities velocities{{0, 0, 0, 0, 0, 0, 0}};
-  for (int i=0;i<7;i++)
-  {
-    velocities.dq[i]= dq[i];
-    std::cout<<dq[i]<<",";
-  }
-
 
   std::string robot_ip;
   if (!node_handle.getParam("robot_ip", robot_ip)) {
@@ -150,15 +142,24 @@ void DmpVelocityExampleController::update(const ros::Time& /* time */,
   elapsed_time_ += period;
 
   ros::Duration time_max(8.0);
+  /*
   double omega_max = 0.1;
   double cycle = std::floor(
       std::pow(-1.0, (elapsed_time_.toSec() - std::fmod(elapsed_time_.toSec(), time_max.toSec())) /
                          time_max.toSec()));
   double omega = cycle * omega_max / 2.0 *
                  (1.0 - std::cos(2.0 * M_PI / time_max.toSec() * elapsed_time_.toSec()));
+*/
 
+  dmp.step(externalForce, tau);
+  std::vector<double> dq = dmp.getDY();
+
+  double omega = 0.0; 
+  int it = 0;
   for (auto joint_handle : velocity_joint_handles_) {
+    omega = dq[it];
     joint_handle.setCommand(omega);
+    it++;
   }
 }
 

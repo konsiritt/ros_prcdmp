@@ -14,7 +14,8 @@ class Config
 public:
     Config(std::string datasetPath);
 
-    Config(std::string datasetPath, std::string basePath);
+    // basePath_ ends in */data/
+    Config(std::string datasetPath, std::string basePath_);
 
     void fillTrajectoryPath(int episodeNr);
 
