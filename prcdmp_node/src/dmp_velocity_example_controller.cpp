@@ -49,7 +49,7 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
 
   std::string datasetPath;
-  if (!node_handle.getParam("/controller_spawner/data_set", datasetPath)) {
+  if (!node_handle.getParam("data_set", datasetPath)) {
     ROS_ERROR("Invalid or no data_set parameter provided; provide e.g. data_set:=set1");
     return 1;
   }
