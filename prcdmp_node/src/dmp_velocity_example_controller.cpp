@@ -49,7 +49,7 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
 
   std::string datasetPath;
-  if (!node_handle.getParam("data_set", datasetPath)) {
+  if (!node_handle.getParam("/dmp_velocity_example_controller/data_set", datasetPath)) {
     ROS_ERROR("Invalid or no data_set parameter provided; provide e.g. data_set:=set1");
     return 1;
   }
@@ -57,7 +57,7 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   /// load DMP specific config data from files
 
   // handles config file access
-  std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/");
+  std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/data/");
   std::cout<<"this is the package base path: "<<basePackagePath<<std::endl;
   Config config(datasetPath, basePackagePath);
   std::cout<<"config file has been created"<<std::endl;
@@ -106,8 +106,9 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   std::cout<<"amount of timesteps for current dmp: "<<timesteps<<std::endl;
 
   std::string robot_ip;
-  if (!node_handle.getParam("robot_ip", robot_ip)) {
+  if (!node_handle.getParam("/franka_control/robot_ip", robot_ip)) {
     ROS_ERROR("Invalid or no robot_ip parameter provided");
+    
     return 1;
   }
   if (robotIp != robot_ip) {
