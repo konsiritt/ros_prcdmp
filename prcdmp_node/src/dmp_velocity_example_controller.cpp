@@ -71,7 +71,6 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   tau = 1.0/timeSpan;
 
   // initialize arrays from config file
-  std::array<double,7> q0;
   std::array<double,7> goal;
   std::vector<double> gainA, gainB;
   moveJsonArrayToVec(config.getDmpJson()["q0"], q0);
@@ -105,7 +104,6 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   double timesteps = dmp.getTimesteps();
   std::cout<<"amount of timesteps for current dmp: "<<timesteps<<std::endl;
 
-  std::string robot_ip;
   if (!node_handle.getParam("/franka_control/robot_ip", robot_ip)) {
     ROS_ERROR("Invalid or no robot_ip parameter provided");
     
@@ -114,49 +112,28 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   if (robotIp != robot_ip) {
     ROS_ERROR("JSON config file specifies other robot ip than function argument");
   }
-
-  /// check if robot is in desired initial pose, and move there if not
-  try {
-    auto state_handle = state_interface->getHandle("panda_robot");
-
-    for (size_t i = 0; i < q0.size(); i++) {
-      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.1) {
-        ROS_WARN(
-            "DmpVelocityExampleController: Robot is not in the expected starting position for "
-            "running this example. Trying to move the robot into its initial position now");
-        try {
-          std::array<double,13> load = {0,0,0,0,0,0,0,0,0,0,0,0,0}; // std::array is another way to define an array
-
-          movePointToPoint(&robot_ip[0u],q0,0.1,load);
-          return true;
-        }
-        catch (const franka::ControlException& e)
-        {
-             std::cout << e.what() << std::endl;
-             return false;
-         }
-        return false;
-      }
-    }
-  } catch (const hardware_interface::HardwareInterfaceException& e) {
-    ROS_ERROR_STREAM(
-        "DmpVelocityExampleController: Exception getting state handle: " << e.what());
-    return false;
-  }
-
   return true;
 }
 
 
 void DmpVelocityExampleController::starting(const ros::Time& /* time */) {
+  /// move robot to desired initial pose
+  try {
+    std::array<double,13> load = {0,0,0,0,0,0,0,0,0,0,0,0,0}; // std::array is another way to define an array
+
+    movePointToPoint(&robot_ip[0u],q0,0.1,load);
+  }
+  catch (const franka::ControlException& e)
+  {
+    std::cout << e.what() << std::endl;
+  }
+
   elapsed_time_ = ros::Duration(0.0);
 }
 
 void DmpVelocityExampleController::update(const ros::Time& /* time */,
                                             const ros::Duration& period) {
   elapsed_time_ += period;
-
-  ros::Duration time_max(8.0);
 
   dmp.step(externalForce, tau);
   std::vector<double> dq = dmp.getDY();

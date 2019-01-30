@@ -43,9 +43,15 @@ class DmpVelocityExampleController : public controller_interface::MultiInterface
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
   ros::Duration elapsed_time_;
 
+  // dmp class
   DiscreteDMP dmp;
+  // time scaling factor: tau<1 -> slower execution
   double tau; 
   std::vector<double> externalForce;
+
+  // initial joint position of the robot
+  std::array<double,7> q0;
+  std::string robot_ip;
 };
 
 }  // namespace prcdmp_node
