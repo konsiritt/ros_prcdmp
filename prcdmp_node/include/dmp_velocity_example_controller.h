@@ -19,8 +19,12 @@
 #include <jsoncpp/json/value.h>
 #include <jsoncpp/json/json.h>
 
+#include <common.h>
+
 #include <franka/robot.h>
 #include <franka/robot_state.h>
+#include <franka/model.h>
+#include <franka/exception.h>
 
 namespace prcdmp_node {
 
@@ -34,6 +38,7 @@ class DmpVelocityExampleController : public controller_interface::MultiInterface
   void stopping(const ros::Time&) override;
 
  private:
+  void movePointToPoint(char* ip,std::array<double,7> qGoal,double speed, std::array<double,13> load);
   hardware_interface::VelocityJointInterface* velocity_joint_interface_;
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
   ros::Duration elapsed_time_;

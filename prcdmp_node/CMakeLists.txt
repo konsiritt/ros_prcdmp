@@ -43,6 +43,7 @@ add_subdirectory(src)
 
 add_library(prcdmp_node
   src/dmp_velocity_example_controller.cpp
+  src/common.cpp
 )
 
 add_dependencies(prcdmp_node

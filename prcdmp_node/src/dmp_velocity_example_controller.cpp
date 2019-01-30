@@ -54,7 +54,7 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
     return 1;
   }
 
-  // load DMP specific config data from files
+  /// load DMP specific config data from files
 
   // handles config file access
   std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/");
@@ -81,7 +81,7 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
   //fill data from json to variables
   std::string robotIp = config.getDataJson()["robot_ip"].asString();
-  std::cout<<"Robot ip : "<<robotIp<<std::endl;
+
   int episodeNr = config.getDataJson()["current_episode"].asInt()-1;
   config.fillTrajectoryPath(episodeNr);
 
@@ -110,17 +110,30 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
     ROS_ERROR("Invalid or no robot_ip parameter provided");
     return 1;
   }
+  if (robotIp != robot_ip) {
+    ROS_ERROR("JSON config file specifies other robot ip than function argument");
+  }
 
+  /// check if robot is in desired initial pose, and move there if not
   try {
     auto state_handle = state_interface->getHandle("panda_robot");
 
-    std::array<double, 7> q_start{{0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4}};
-    for (size_t i = 0; i < q_start.size(); i++) {
-      if (std::abs(state_handle.getRobotState().q_d[i] - q_start[i]) > 0.1) {
-        ROS_ERROR_STREAM(
+    for (size_t i = 0; i < q0.size(); i++) {
+      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.1) {
+        ROS_WARN(
             "DmpVelocityExampleController: Robot is not in the expected starting position for "
-            "running this example. Run `roslaunch franka_example_controllers move_to_start.launch "
-            "robot_ip:=<robot-ip> load_gripper:=<has-attached-gripper>` first.");
+            "running this example. Trying to move the robot into its initial position now");
+        try {
+          std::array<double,13> load = {0,0,0,0,0,0,0,0,0,0,0,0,0}; // std::array is another way to define an array
+
+          movePointToPoint(&robot_ip[0u],q0,0.1,load);
+          return true;
+        }
+        catch (const franka::ControlException& e)
+        {
+             std::cout << e.what() << std::endl;
+             return false;
+         }
         return false;
       }
     }
@@ -133,6 +146,7 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   return true;
 }
 
+
 void DmpVelocityExampleController::starting(const ros::Time& /* time */) {
   elapsed_time_ = ros::Duration(0.0);
 }
@@ -142,14 +156,6 @@ void DmpVelocityExampleController::update(const ros::Time& /* time */,
   elapsed_time_ += period;
 
   ros::Duration time_max(8.0);
-  /*
-  double omega_max = 0.1;
-  double cycle = std::floor(
-      std::pow(-1.0, (elapsed_time_.toSec() - std::fmod(elapsed_time_.toSec(), time_max.toSec())) /
-                         time_max.toSec()));
-  double omega = cycle * omega_max / 2.0 *
-                 (1.0 - std::cos(2.0 * M_PI / time_max.toSec() * elapsed_time_.toSec()));
-*/
 
   dmp.step(externalForce, tau);
   std::vector<double> dq = dmp.getDY();
@@ -167,6 +173,46 @@ void DmpVelocityExampleController::stopping(const ros::Time& /*time*/) {
   // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
   // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
   // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
+}
+
+void DmpVelocityExampleController::movePointToPoint(char* ip,std::array<double,7> qGoal,double speed, std::array<double,13> load)
+{
+    try
+    {
+        franka::Robot robot(ip); // initialization of the robot object passing the robot IP to its constructor function
+
+        //set default behavior:
+        robot.setCollisionBehavior(
+        {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
+        {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
+        {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
+        {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
+        robot.setJointImpedance({{3000, 3000, 3000, 2500, 2500, 2000, 2000}});
+        robot.setCartesianImpedance({{3000, 3000, 3000, 300, 300, 300}});
+        //robot.setFilters(1000, 1000, 1000, 1000, 1000);
+        // Set external load for the manipulator ========================================================
+        robot.setLoad(load[0],{load[1],load[2],load[3]},{load[4],load[5],load[6],load[7],load[8],load[9],load[10],load[11],load[12]});
+        // ==============================================================================================
+
+        double speed_factor = speed;
+
+        // Set collision behavior.
+        robot.setCollisionBehavior(
+        {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
+        {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
+        {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
+        {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
+
+        MotionGenerator motion_generator(speed_factor, qGoal);
+        robot.control(motion_generator);
+        std::cout << "Motion finished" << std::endl;
+
+    }
+    catch (const franka::Exception& e)
+    {
+        std::cout << e.what() << std::endl;
+        return;
+    }
 }
 
 }  // namespace prcdmp_node
