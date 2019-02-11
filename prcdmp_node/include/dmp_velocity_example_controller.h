@@ -45,13 +45,19 @@ class DmpVelocityExampleController : public controller_interface::MultiInterface
 
   // dmp class
   DiscreteDMP dmp;
+  DiscreteDMP dmpInitialize;
   // time scaling factor: tau<1 -> slower execution
   double tau; 
   std::vector<double> externalForce;
 
-  // initial joint position of the robot
+  // initial joint position in the dmp
   std::array<double,7> q0;
-  std::string robot_ip;
+  // current joint position of the robot
+  std::array<double,7> qInit;
+  std::string robotIp;
+
+  // flag whether or not moving to start is necessary
+  bool moveToStart = false;
 };
 
 }  // namespace prcdmp_node

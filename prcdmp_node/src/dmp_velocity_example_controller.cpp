@@ -79,7 +79,6 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   moveJsonArrayToVec(config.getDmpJson()["gain_b"], gainB);
 
   //fill data from json to variables
-  std::string robotIp = config.getDataJson()["robot_ip"].asString();
 
   int episodeNr = config.getDataJson()["current_episode"].asInt()-1;
   config.fillTrajectoryPath(episodeNr);
@@ -97,20 +96,38 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   std::vector<double> y0v(q0.begin(), q0.end());
   std::vector<double> goalv(goal.begin(), goal.end());
 
-  // initialize dmp object
+  // initialize dmp runtime object
   DiscreteDMP dmpTemp(dofs, nBFs, dt, y0v, goalv, w, gainA, gainB);
   dmp = dmpTemp;
 
-  double timesteps = dmp.getTimesteps();
-  std::cout<<"amount of timesteps for current dmp: "<<timesteps<<std::endl;
+  // check for initial joint positions of the robot
+  try {
+    auto state_handle = state_interface->getHandle("panda_robot");
 
-  if (!node_handle.getParam("/franka_control/robot_ip", robot_ip)) {
+    for (size_t i = 0; i < q0.size(); i++) {
+      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.1) {
+        qInit[i] = state_handle.getRobotState().q_d[i];
+        moveToStart = true;
+      }
+    }
+  } catch (const hardware_interface::HardwareInterfaceException& e) {
+    ROS_ERROR_STREAM(
+        "JointVelocityExampleController: Exception getting state handle: " << e.what());
+    return false;
+  }
+
+  // initialize a dmp to move the robot into the starting joint positions directly
+  if (moveToStart) {
+    std::vector<std::vector<double>> wInit;
+    std::vector<double> robotQ0(qInit.begin(), qInit.end());
+     DiscreteDMP dmpTemp2(dofs, nBFs, dt, robotQ0, y0v, wInit, gainA, gainB);
+     dmpInitialize = dmpTemp2;
+  }
+
+  if (!node_handle.getParam("/franka_control/robot_ip", robotIp)) {
     ROS_ERROR("Invalid or no robot_ip parameter provided");
     
     return 1;
-  }
-  if (robotIp != robot_ip) {
-    ROS_ERROR("JSON config file specifies other robot ip than function argument");
   }
   return true;
 }
@@ -118,14 +135,34 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
 void DmpVelocityExampleController::starting(const ros::Time& /* time */) {
   /// move robot to desired initial pose
-  try {
-    std::array<double,13> load = {0,0,0,0,0,0,0,0,0,0,0,0,0}; // std::array is another way to define an array
+  if (moveToStart) {
+    try {
+      std::array<double,13> load = {0,0,0,0,0,0,0,0,0,0,0,0,0}; // std::array is another way to define an array
 
-    movePointToPoint(&robot_ip[0u],q0,0.1,load);
-  }
-  catch (const franka::ControlException& e)
-  {
-    std::cout << e.what() << std::endl;
+      double tauInit = 5;
+
+      int timesteps = dmpInitialize.getTimesteps()/tauInit;
+      std::cout<< "amount of timesteps for initialization/ move to start dmp: "<<timesteps<<std::endl;
+
+      for(int step = 0; step<timesteps; step++) {
+        dmpInitialize.step(externalForce, tauInit);
+        std::vector<double> dq = dmpInitialize.getDY();
+
+        double omega = 0.0;
+        int it = 0;
+        for (auto joint_handle : velocity_joint_handles_) {
+          omega = dq[it];
+          joint_handle.setCommand(omega);
+          it++;
+        }
+      }
+      //TODO: remove from repo
+      //movePointToPoint(&robotIp[0u],q0,0.1,load);
+    }
+    catch (const franka::ControlException& e)
+    {
+      std::cout << e.what() << std::endl;
+    }
   }
 
   elapsed_time_ = ros::Duration(0.0);
