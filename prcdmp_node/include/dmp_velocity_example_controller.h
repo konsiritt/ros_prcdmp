@@ -43,6 +43,9 @@ class DmpVelocityExampleController : public controller_interface::MultiInterface
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
   ros::Duration elapsed_time_;
 
+  // handle for robot hardware (not sure if safe?)
+  hardware_interface::RobotHW* robotHardware;
+
   // dmp class
   DiscreteDMP dmp;
   DiscreteDMP dmpInitialize;

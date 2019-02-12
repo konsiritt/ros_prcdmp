@@ -15,6 +15,7 @@ namespace prcdmp_node {
 
 bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardware,
                                           ros::NodeHandle& node_handle) {
+  robotHardware = robot_hardware;
   velocity_joint_interface_ = robot_hardware->get<hardware_interface::VelocityJointInterface>();
   if (velocity_joint_interface_ == nullptr) {
     ROS_ERROR(
@@ -105,8 +106,8 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
     auto state_handle = state_interface->getHandle("panda_robot");
 
     for (size_t i = 0; i < q0.size(); i++) {
-      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.1) {
-        qInit[i] = state_handle.getRobotState().q_d[i];
+      qInit[i] = state_handle.getRobotState().q_d[i];
+      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.1) {        
         moveToStart = true;
       }
     }
@@ -116,13 +117,12 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
     return false;
   }
 
-  // initialize a dmp to move the robot into the starting joint positions directly
-  if (moveToStart) {
-    std::vector<std::vector<double>> wInit;
-    std::vector<double> robotQ0(qInit.begin(), qInit.end());
-     DiscreteDMP dmpTemp2(dofs, nBFs, dt, robotQ0, y0v, wInit, gainA, gainB);
-     dmpInitialize = dmpTemp2;
-  }
+  // initialize dmp that moves to the initial position 
+  std::vector<std::vector<double>> wZero(w.size(),std::vector<double>(w[0].size(), 0.0));
+  std::vector<double> robotQ0(qInit.begin(), qInit.end());
+  DiscreteDMP dmpTemp2(dofs, nBFs, dt, robotQ0, y0v, wZero, gainA, gainB);     
+  dmpInitialize = dmpTemp2;
+
 
   if (!node_handle.getParam("/franka_control/robot_ip", robotIp)) {
     ROS_ERROR("Invalid or no robot_ip parameter provided");
@@ -134,37 +134,27 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
 
 void DmpVelocityExampleController::starting(const ros::Time& /* time */) {
-  /// move robot to desired initial pose
-  if (moveToStart) {
-    try {
-      std::array<double,13> load = {0,0,0,0,0,0,0,0,0,0,0,0,0}; // std::array is another way to define an array
+  moveToStart = false;
 
-      double tauInit = 5;
-
-      int timesteps = dmpInitialize.getTimesteps()/tauInit;
-      std::cout<< "amount of timesteps for initialization/ move to start dmp: "<<timesteps<<std::endl;
-
-      for(int step = 0; step<timesteps; step++) {
-        dmpInitialize.step(externalForce, tauInit);
-        std::vector<double> dq = dmpInitialize.getDY();
-
-        double omega = 0.0;
-        int it = 0;
-        for (auto joint_handle : velocity_joint_handles_) {
-          omega = dq[it];
-          joint_handle.setCommand(omega);
-          it++;
-        }
-      }
-      //TODO: remove from repo
-      //movePointToPoint(&robotIp[0u],q0,0.1,load);
-    }
-    catch (const franka::ControlException& e)
-    {
-      std::cout << e.what() << std::endl;
-    }
+  auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
+  if (state_interface == nullptr) {
+    ROS_ERROR("DmpVelocityExampleController: Could not get state interface from hardware");
   }
 
+  // check for initial joint positions of the robot
+  try {
+    auto state_handle = state_interface->getHandle("panda_robot");
+
+    for (size_t i = 0; i < q0.size(); i++) {
+      qInit[i] = state_handle.getRobotState().q_d[i];
+      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.1) {        
+        moveToStart = true;
+      }
+    }
+  } catch (const hardware_interface::HardwareInterfaceException& e) {
+    ROS_ERROR_STREAM(
+        "JointVelocityExampleController: Exception getting state handle: " << e.what());
+  }
   elapsed_time_ = ros::Duration(0.0);
 }
 
@@ -172,8 +162,15 @@ void DmpVelocityExampleController::update(const ros::Time& /* time */,
                                             const ros::Duration& period) {
   elapsed_time_ += period;
 
-  dmp.step(externalForce, tau);
-  std::vector<double> dq = dmp.getDY();
+  std::vector<double> dq(7,0.0);
+  if (moveToStart) {
+    dmpInitialize.step(externalForce, tau);
+    dq = dmpInitialize.getDY();
+  }
+  else {
+    dmp.step(externalForce, tau);
+    dq = dmp.getDY();
+  }
 
   double omega = 0.0; 
   int it = 0;
