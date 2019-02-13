@@ -59,13 +59,13 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
   // handles config file access
   std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/data/");
-  std::cout<<"this is the package base path: "<<basePackagePath<<std::endl;
+  std::cout<<"DmpVelocityExampleController: this is the package base path: "<<basePackagePath<<std::endl;
   Config config(datasetPath, basePackagePath);
-  std::cout<<"config file has been created"<<std::endl;
+  std::cout<<"DmpVelocityExampleController: config file has been created"<<std::endl;
 
   //fill data from json to variables
   int dofs = config.getDmpJson()["dofs"].asInt();
-  std::cout<<"DOFs: "<<dofs<<std::endl;
+  std::cout<<"DmpVelocityExampleController: DOFs: "<<dofs<<std::endl;
   int nBFs = config.getDmpJson()["n_basis"].asInt();
   double dt = config.getDmpJson()["dt"].asDouble();
   double timeSpan = config.getDmpJson()["timespan"].asDouble();
@@ -82,6 +82,7 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   //fill data from json to variables
 
   int episodeNr = config.getDataJson()["current_episode"].asInt()-1;
+  std::cout<<"DmpVelocityExampleController: executing episode #"<<episodeNr<<std::endl;
   config.fillTrajectoryPath(episodeNr);
 
   std::vector<double> externalForce;
@@ -168,14 +169,14 @@ void DmpVelocityExampleController::update(const ros::Time& /* time */,
     dmpInitialize.step(externalForce, tau);
     dq = dmpInitialize.getDY();
     if (dmpInitialize.getTrajFinished()) {
-      std::cout<<"Initialized successfully to the initial position after time[s]: "<< elapsed_time_<<std::endl;
+      std::cout<<"DmpVelocityExampleController: Initialized successfully to the initial position after time[s]: "<< elapsed_time_<<std::endl;
     }
   }
   else {
     dmp.step(externalForce, tau);
     dq = dmp.getDY();
     if (dmp.getTrajFinished()) {
-      std::cout<<"finished the target trajectory succesfully after time[s]: "<< elapsed_time_<<std::endl;
+      std::cout<<"DmpVelocityExampleController: finished the target trajectory succesfully after time[s]: "<< elapsed_time_<<std::endl;
     }
   }
 

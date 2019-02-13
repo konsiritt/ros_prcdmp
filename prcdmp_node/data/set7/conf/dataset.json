@@ -1,0 +1,6 @@
+{
+   "current_episode" : 1,
+   "image_dir" : "weights.txt",
+   "robot_ip" : "192.168.3.113",
+   "weights_dir" : "conf/weights.txt"
+}
