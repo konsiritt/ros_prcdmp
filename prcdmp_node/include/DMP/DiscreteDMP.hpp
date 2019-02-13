@@ -33,6 +33,10 @@ public:
 
     ~DiscreteDMP(){};
 
+    void setInitialPosition (std::vector<double> &y0);
+
+    void setEndThreshold (double thrsh);
+
 protected:
     /// generates the Gaussian basis function
     void genPSI(const double &x, std::vector<double> &psi);

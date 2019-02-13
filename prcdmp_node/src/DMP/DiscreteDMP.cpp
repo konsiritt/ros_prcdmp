@@ -21,6 +21,17 @@ DiscreteDMP::DiscreteDMP(int nDMPs, int nBFs, double dt, std::vector<double> &y0
     checkOffset();
 }
 
+void DiscreteDMP::setInitialPosition (std::vector<double> &y0)
+{
+  this->y0 = y0;
+  this->resettState();
+}
+
+void DiscreteDMP::setEndThreshold(double thrsh)
+{
+  this->endThreshold = thrsh;
+}
+
 void DiscreteDMP::genCenters()
 {
     std::vector<double> desCenters = UTILS::linspace<double>(0,  cs.getRunTime(), nBFs);

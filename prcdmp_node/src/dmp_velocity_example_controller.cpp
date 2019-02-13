@@ -107,8 +107,8 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
     for (size_t i = 0; i < q0.size(); i++) {
       qInit[i] = state_handle.getRobotState().q_d[i];
-      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.1) {        
-        moveToStart = true;
+      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.05) {
+        initializingDMP = true;
       }
     }
   } catch (const hardware_interface::HardwareInterfaceException& e) {
@@ -134,11 +134,11 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
 
 void DmpVelocityExampleController::starting(const ros::Time& /* time */) {
-  moveToStart = false;
+  initializingDMP = false;
 
   auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
   if (state_interface == nullptr) {
-    ROS_ERROR("DmpVelocityExampleController: Could not get state interface from hardware");
+    ROS_ERROR("DmpVelocityExampleController: Could not get state interface from hardware when starting the controller");
   }
 
   // check for initial joint positions of the robot
@@ -147,8 +147,8 @@ void DmpVelocityExampleController::starting(const ros::Time& /* time */) {
 
     for (size_t i = 0; i < q0.size(); i++) {
       qInit[i] = state_handle.getRobotState().q_d[i];
-      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.1) {        
-        moveToStart = true;
+      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.05) {
+        initializingDMP = true;
       }
     }
   } catch (const hardware_interface::HardwareInterfaceException& e) {
@@ -163,13 +163,20 @@ void DmpVelocityExampleController::update(const ros::Time& /* time */,
   elapsed_time_ += period;
 
   std::vector<double> dq(7,0.0);
-  if (moveToStart) {
+
+  if (initializingDMP) {
     dmpInitialize.step(externalForce, tau);
     dq = dmpInitialize.getDY();
+    if (dmpInitialize.getTrajFinished()) {
+      std::cout<<"Initialized successfully to the initial position after time[s]: "<< elapsed_time_<<std::endl;
+    }
   }
   else {
     dmp.step(externalForce, tau);
     dq = dmp.getDY();
+    if (dmp.getTrajFinished()) {
+      std::cout<<"finished the target trajectory succesfully after time[s]: "<< elapsed_time_<<std::endl;
+    }
   }
 
   double omega = 0.0; 
@@ -179,52 +186,13 @@ void DmpVelocityExampleController::update(const ros::Time& /* time */,
     joint_handle.setCommand(omega);
     it++;
   }
+  //this->starting(ros::Time());
 }
 
 void DmpVelocityExampleController::stopping(const ros::Time& /*time*/) {
   // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
   // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
   // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
-}
-
-void DmpVelocityExampleController::movePointToPoint(char* ip,std::array<double,7> qGoal,double speed, std::array<double,13> load)
-{
-    try
-    {
-        franka::Robot robot(ip); // initialization of the robot object passing the robot IP to its constructor function
-
-        //set default behavior:
-        robot.setCollisionBehavior(
-        {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-        {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
-        {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-        {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
-        robot.setJointImpedance({{3000, 3000, 3000, 2500, 2500, 2000, 2000}});
-        robot.setCartesianImpedance({{3000, 3000, 3000, 300, 300, 300}});
-        //robot.setFilters(1000, 1000, 1000, 1000, 1000);
-        // Set external load for the manipulator ========================================================
-        robot.setLoad(load[0],{load[1],load[2],load[3]},{load[4],load[5],load[6],load[7],load[8],load[9],load[10],load[11],load[12]});
-        // ==============================================================================================
-
-        double speed_factor = speed;
-
-        // Set collision behavior.
-        robot.setCollisionBehavior(
-        {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-        {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
-        {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-        {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
-
-        MotionGenerator motion_generator(speed_factor, qGoal);
-        robot.control(motion_generator);
-        std::cout << "Motion finished" << std::endl;
-
-    }
-    catch (const franka::Exception& e)
-    {
-        std::cout << e.what() << std::endl;
-        return;
-    }
 }
 
 }  // namespace prcdmp_node

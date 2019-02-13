@@ -19,8 +19,6 @@
 #include <jsoncpp/json/value.h>
 #include <jsoncpp/json/json.h>
 
-#include <common.h>
-
 #include <franka/robot.h>
 #include <franka/robot_state.h>
 #include <franka/model.h>
@@ -38,7 +36,6 @@ class DmpVelocityExampleController : public controller_interface::MultiInterface
   void stopping(const ros::Time&) override;
 
  private:
-  void movePointToPoint(char* ip,std::array<double,7> qGoal,double speed, std::array<double,13> load);
   hardware_interface::VelocityJointInterface* velocity_joint_interface_;
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
   ros::Duration elapsed_time_;
@@ -60,7 +57,9 @@ class DmpVelocityExampleController : public controller_interface::MultiInterface
   std::string robotIp;
 
   // flag whether or not moving to start is necessary
-  bool moveToStart = false;
+  bool initializingDMP = false;
+  // flag wheter or not the target dmp is being executed
+  bool executingDMP = false;
 };
 
 }  // namespace prcdmp_node

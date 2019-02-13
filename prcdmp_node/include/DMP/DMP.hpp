@@ -62,6 +62,13 @@ public:
 
     std::vector<double> getDY();
 
+    /**
+     * @brief getTrajFinished returns boolean that determines end of the trajectory on the basis of
+     * the canonical system reaching below a certain threshold -> the system dynamics do not change anymore
+     * @return
+     */
+    bool getTrajFinished();
+
 protected:
 
     /// gaussian basis function center
@@ -77,7 +84,7 @@ protected:
     /// initial positions
     std::vector<double> y0;
     /// final/goal positions
-    std::vector<double> goal;
+    std::vector<double> goal;    
     /// gain alpha
     std::vector<double> gainA;
     /// gain beta
@@ -86,6 +93,10 @@ protected:
     int nDMPs;
     /// Number of basis functions
     int nBFs;
+    /// threshold to determine end of trajectory, compared to the canonical system state
+    double endThreshold;
+    /// flag to determine end of trajectory
+    bool trajFinished;
 
     CanonicalSystem cs;
 

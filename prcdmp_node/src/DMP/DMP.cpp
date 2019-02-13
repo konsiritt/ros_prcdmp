@@ -7,7 +7,7 @@
 
 DMP::DMP(int nDMPs, int nBFs, double dt, std::vector<double> &y0, std::vector<double> &goal,
          std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB, std::string pattern)
-:cs(dt), nDMPs(nDMPs), nBFs(nBFs), dt(dt), y0(y0), goal(goal)
+  :cs(dt), nDMPs(nDMPs), nBFs(nBFs), dt(dt), y0(y0), goal(goal), endThreshold(0.01), trajFinished(false)
 {
     if (w.size())
     {
@@ -37,6 +37,7 @@ void DMP::resettState()
     dy  = std::vector<double> (nDMPs, 0);
     ddy = std::vector<double> (nDMPs, 0);
     cs.resettState();
+    trajFinished = false;
 }
 
 void DMP::checkOffset()
@@ -60,6 +61,7 @@ std::vector<double> DMP::step( std::vector<double> &externalForce, double tau, d
     double errorCoupling = 1.0/(1.0+error);
 
     double x    = cs.step(tau, errorCoupling);
+    if (x < endThreshold) {trajFinished = true;}
     std::vector<double> psi;
     genPSI(x, psi);
 
@@ -132,4 +134,9 @@ int DMP::getTimesteps()
 std::vector<double> DMP::getDY()
 {
     return dy;
+}
+
+bool DMP::getTrajFinished()
+{
+  return trajFinished;
 }
