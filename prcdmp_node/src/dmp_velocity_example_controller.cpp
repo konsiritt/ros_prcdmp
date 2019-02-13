@@ -49,6 +49,7 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
     return false;
   }
 
+
   std::string datasetPath;
   if (!node_handle.getParam("/dmp_velocity_example_controller/data_set", datasetPath)) {
     ROS_ERROR("Invalid or no data_set parameter provided; provide e.g. data_set:=set1");
@@ -59,13 +60,13 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
   // handles config file access
   std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/data/");
-  std::cout<<"this is the package base path: "<<basePackagePath<<std::endl;
+  std::cout<<"DmpVelocityExampleController: this is the package base path: "<<basePackagePath<<std::endl;
   Config config(datasetPath, basePackagePath);
-  std::cout<<"config file has been created"<<std::endl;
+  std::cout<<"DmpVelocityExampleController: config file has been created"<<std::endl;
 
   //fill data from json to variables
   int dofs = config.getDmpJson()["dofs"].asInt();
-  std::cout<<"DOFs: "<<dofs<<std::endl;
+  std::cout<<"DmpVelocityExampleController: DOFs: "<<dofs<<std::endl;
   int nBFs = config.getDmpJson()["n_basis"].asInt();
   double dt = config.getDmpJson()["dt"].asDouble();
   double timeSpan = config.getDmpJson()["timespan"].asDouble();
@@ -82,6 +83,7 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   //fill data from json to variables
 
   int episodeNr = config.getDataJson()["current_episode"].asInt()-1;
+  std::cout<<"DmpVelocityExampleController: executing episode #"<<episodeNr<<std::endl;
   config.fillTrajectoryPath(episodeNr);
 
   std::vector<double> externalForce;
