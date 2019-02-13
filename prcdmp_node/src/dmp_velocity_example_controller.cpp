@@ -16,6 +16,7 @@ namespace prcdmp_node {
 bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardware,
                                           ros::NodeHandle& node_handle) {
   robotHardware = robot_hardware;
+  nodeHandle = &node_handle;
   velocity_joint_interface_ = robot_hardware->get<hardware_interface::VelocityJointInterface>();
   if (velocity_joint_interface_ == nullptr) {
     ROS_ERROR(
@@ -47,7 +48,6 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
     ROS_ERROR("DmpVelocityExampleController: Could not get state interface from hardware");
     return false;
   }
-
 
   std::string datasetPath;
   if (!node_handle.getParam("/dmp_velocity_example_controller/data_set", datasetPath)) {
@@ -107,8 +107,8 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
     for (size_t i = 0; i < q0.size(); i++) {
       qInit[i] = state_handle.getRobotState().q_d[i];
-      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.05) {
-        initializingDMP = true;
+      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.05) { //TODO: is this a good threshold?
+        initializedDMP = true;
       }
     }
   } catch (const hardware_interface::HardwareInterfaceException& e) {
@@ -125,16 +125,20 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
 
   if (!node_handle.getParam("/franka_control/robot_ip", robotIp)) {
-    ROS_ERROR("Invalid or no robot_ip parameter provided");
-    
+    ROS_ERROR("Invalid or no robot_ip parameter provided");    
     return 1;
   }
+
+  nodeHandle->setParam("/franka_control/init_dmp", initializedDMP);
+  nodeHandle->setParam("/franka_control/exec_dmp", executingDMP);
+
   return true;
 }
 
 
 void DmpVelocityExampleController::starting(const ros::Time& /* time */) {
-  initializingDMP = false;
+  initializedDMP = false;
+  nodeHandle->setParam("/franka_control/init_dmp", initializedDMP);
 
   auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
   if (state_interface == nullptr) {
@@ -148,7 +152,8 @@ void DmpVelocityExampleController::starting(const ros::Time& /* time */) {
     for (size_t i = 0; i < q0.size(); i++) {
       qInit[i] = state_handle.getRobotState().q_d[i];
       if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.05) {
-        initializingDMP = true;
+        initializedDMP = true;
+        nodeHandle->setParam("/franka_control/init_dmp", initializedDMP);
       }
     }
   } catch (const hardware_interface::HardwareInterfaceException& e) {
@@ -164,18 +169,24 @@ void DmpVelocityExampleController::update(const ros::Time& /* time */,
 
   std::vector<double> dq(7,0.0);
 
-  if (initializingDMP) {
+  if (!initializedDMP) {
     dmpInitialize.step(externalForce, tau);
     dq = dmpInitialize.getDY();
     if (dmpInitialize.getTrajFinished()) {
-      std::cout<<"Initialized successfully to the initial position after time[s]: "<< elapsed_time_<<std::endl;
+      std::cout<<"Initialized to the initial position after time[s]: "<< elapsed_time_<<std::endl;
+      nodeHandle->setParam("/franka_control/init_dmp", initializedDMP);
     }
   }
-  else {
+  else {//if (executingDMP){
     dmp.step(externalForce, tau);
     dq = dmp.getDY();
     if (dmp.getTrajFinished()) {
-      std::cout<<"finished the target trajectory succesfully after time[s]: "<< elapsed_time_<<std::endl;
+      std::cout<<"finished the target trajectory after time[s]: "<< elapsed_time_<<std::endl;
+      executingDMP = false;
+      nodeHandle->setParam("/franka_control/exec_dmp", executingDMP);
+      // joints are not in initial position anymore
+      initializedDMP = false;
+      nodeHandle->setParam("/franka_control/init_dmp", initializedDMP);
     }
   }
 

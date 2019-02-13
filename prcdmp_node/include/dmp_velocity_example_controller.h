@@ -43,6 +43,9 @@ class DmpVelocityExampleController : public controller_interface::MultiInterface
   // handle for robot hardware (not sure if safe?)
   hardware_interface::RobotHW* robotHardware;
 
+  // handle for ROS node (communication, maybe not the best idea - performance?)
+  ros::NodeHandle* nodeHandle;
+
   // dmp class
   DiscreteDMP dmp;
   DiscreteDMP dmpInitialize;
@@ -57,7 +60,7 @@ class DmpVelocityExampleController : public controller_interface::MultiInterface
   std::string robotIp;
 
   // flag whether or not moving to start is necessary
-  bool initializingDMP = false;
+  bool initializedDMP = false;
   // flag wheter or not the target dmp is being executed
   bool executingDMP = false;
 };
