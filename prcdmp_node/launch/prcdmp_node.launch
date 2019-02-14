@@ -12,5 +12,6 @@
   <rosparam command="load" file="$(find prcdmp_node)/config/prcdmp_node.yaml" />
   <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen"  args="dmp_velocity_example_controller"/>
   <param name="dmp_velocity_example_controller/data_set" value="$(arg data_set)" type="str" />
-  <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find franka_example_controllers)/launch/robot.rviz"/>
+  <!--
+  <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find franka_example_controllers)/launch/robot.rviz"/> -->
 </launch>

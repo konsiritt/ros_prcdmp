@@ -11,6 +11,7 @@
 #include <hardware_interface/robot_hw.h>
 #include <ros/node_handle.h>
 #include <ros/time.h>
+#include "std_msgs/Bool.h"
 
 #include "UTILS/Config.h"
 #include <string>
@@ -60,9 +61,13 @@ class DmpVelocityExampleController : public controller_interface::MultiInterface
   std::string robotIp;
 
   // flag whether or not moving to start is necessary
-  bool initializedDMP = false;
+  bool notInitializedDMP = false;
   // flag wheter or not the target dmp is being executed
   bool executingDMP = false;
+
+  // dummy (for now) callback function reacting to boolean input
+  void callback(const std_msgs::Bool::ConstPtr& msg);
+  ros::Subscriber sub;
 };
 
 }  // namespace prcdmp_node
