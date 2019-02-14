@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   realtime_tools
   roscpp
   rospy
+  std_msgs
 )
 
 find_package(Eigen3 REQUIRED)
@@ -44,6 +45,10 @@ add_subdirectory(src)
 add_library(prcdmp_node
   src/dmp_velocity_example_controller.cpp
 )
+
+#temporary
+add_executable(talkerDummy src/talkerDummy.cpp)
+target_link_libraries(talkerDummy ${catkin_LIBRARIES})
 
 add_dependencies(prcdmp_node
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
