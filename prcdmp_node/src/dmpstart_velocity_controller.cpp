@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Franka Emika GmbH
 // Use of this source code is governed by the Apache-2.0 license, see LICENSE
-#include <dmp_velocity_example_controller.h>
+#include <dmpstart_velocity_controller.h>
 
 #include <cmath>
 
@@ -13,26 +13,29 @@
 
 namespace prcdmp_node {
 
-bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardware,
+bool DmpStartVelocityController::init(hardware_interface::RobotHW* robot_hardware,
                                           ros::NodeHandle& node_handle) {
   robotHardware = robot_hardware;
   nodeHandle = &node_handle;
 
+  // publisher to send end of initialization signal
+  pub = node_handle.advertise<std_msgs::Bool>("/prcdmp/flag_notInit", 10);
+
   // dummy (for now) subscriber that does stuff
-  sub = node_handle.subscribe("/prcdmp/flag_exec", 10, &DmpVelocityExampleController::callback, this);
+  sub = node_handle.subscribe("/prcdmp/coupling_term", 10, &DmpStartVelocityController::callback, this);
 
   velocity_joint_interface_ = robot_hardware->get<hardware_interface::VelocityJointInterface>();
   if (velocity_joint_interface_ == nullptr) {
     ROS_ERROR(
-        "DmpVelocityExampleController: Error getting velocity joint interface from hardware!");
+        "DmpStartVelocityController: Error getting velocity joint interface from hardware!");
     return false;
   }
   std::vector<std::string> joint_names;
   if (!node_handle.getParam("joint_names", joint_names)) {
-    ROS_ERROR("DmpVelocityExampleController: Could not parse joint names");
+    ROS_ERROR("DmpStartVelocityController: Could not parse joint names");
   }
   if (joint_names.size() != 7) {
-    ROS_ERROR_STREAM("DmpVelocityExampleController: Wrong number of joint names, got "
+    ROS_ERROR_STREAM("DmpStartVelocityController: Wrong number of joint names, got "
                      << joint_names.size() << " instead of 7 names!");
     return false;
   }
@@ -42,20 +45,20 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
       velocity_joint_handles_[i] = velocity_joint_interface_->getHandle(joint_names[i]);
     } catch (const hardware_interface::HardwareInterfaceException& ex) {
       ROS_ERROR_STREAM(
-          "DmpVelocityExampleController: Exception getting joint handles: " << ex.what());
+          "DmpStartVelocityController: Exception getting joint handles: " << ex.what());
       return false;
     }
   }
 
   auto state_interface = robot_hardware->get<franka_hw::FrankaStateInterface>();
   if (state_interface == nullptr) {
-    ROS_ERROR("DmpVelocityExampleController: Could not get state interface from hardware");
+    ROS_ERROR("DmpStartVelocityController: Could not get state interface from hardware");
     return false;
   }
 
 
   std::string datasetPath;
-  if (!node_handle.getParam("/dmp_velocity_example_controller/data_set", datasetPath)) {
+  if (!node_handle.getParam("/dmpstart_velocity_controller/data_set", datasetPath)) {
     ROS_ERROR("Invalid or no data_set parameter provided; provide e.g. data_set:=set1");
     return 1;
   }
@@ -64,17 +67,17 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
   // handles config file access
   std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/data/");
-  std::cout<<"DmpVelocityExampleController: this is the package base path: "<<basePackagePath<<std::endl;
+  std::cout<<"DmpStartVelocityController: this is the package base path: "<<basePackagePath<<std::endl;
   Config config(datasetPath, basePackagePath);
-  std::cout<<"DmpVelocityExampleController: config file has been created"<<std::endl;
+  std::cout<<"DmpStartVelocityController: config file has been created"<<std::endl;
 
   //fill data from json to variables
   int dofs = config.getDmpJson()["dofs"].asInt();
-  std::cout<<"DmpVelocityExampleController: DOFs: "<<dofs<<std::endl;
+  std::cout<<"DmpStartVelocityController: DOFs: "<<dofs<<std::endl;
   int nBFs = config.getDmpJson()["n_basis"].asInt();
   double dt = config.getDmpJson()["dt"].asDouble();
   double timeSpan = config.getDmpJson()["timespan"].asDouble();
-  tau = 1.0/timeSpan;
+  tau = 1.0/timeSpan; // TODO: for initialization the timespan can be shorter?!
 
   // initialize arrays from config file
   std::array<double,7> goal;
@@ -87,7 +90,7 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
   //fill data from json to variables
 
   int episodeNr = config.getDataJson()["current_episode"].asInt()-1;
-  std::cout<<"DmpVelocityExampleController: executing episode #"<<episodeNr<<std::endl;
+  std::cout<<"DmpStartVelocityController: executing episode #"<<episodeNr<<std::endl;
   config.fillTrajectoryPath(episodeNr);
 
   std::vector<double> externalForce;
@@ -101,11 +104,6 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
 
   // convert arrays to vectors
   std::vector<double> y0v(q0.begin(), q0.end());
-  std::vector<double> goalv(goal.begin(), goal.end());
-
-  // initialize dmp runtime object
-  DiscreteDMP dmpTemp(dofs, nBFs, dt, y0v, goalv, w, gainA, gainB);
-  dmp = dmpTemp;
 
   // check for initial joint positions of the robot
   try {
@@ -114,13 +112,13 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
     for (size_t i = 0; i < q0.size(); i++) {
       qInit[i] = state_handle.getRobotState().q_d[i];
       // if only just one joint is not close enough to q0, assume robot is not initialized
-      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.05) { //TODO: is this a good threshold?
+      if (std::abs(qInit[i] - q0[i]) > 0.05) { //TODO: is this a good threshold?
         notInitializedDMP = true;
       }
     }
   } catch (const hardware_interface::HardwareInterfaceException& e) {
     ROS_ERROR_STREAM(
-        "JointVelocityExampleController: Exception getting state handle: " << e.what());
+        "DmpStartVelocityController: Exception getting state handle: " << e.what());
     return false;
   }
 
@@ -136,24 +134,24 @@ bool DmpVelocityExampleController::init(hardware_interface::RobotHW* robot_hardw
     return 1;
   }
 
-  nodeHandle->setParam("/franka_control/init_dmp", notInitializedDMP);
-  nodeHandle->setParam("/franka_control/exec_dmp", executingDMP);
-
+  // publish, so that the state of the robot (initialized or not) is known to the manager
+  std_msgs::Bool msg;
+  msg.data = notInitializedDMP;
+  pub.publish(msg);
   return true;
 }
 
 
-void DmpVelocityExampleController::starting(const ros::Time& /* time */) {
-  std::cout<<"DmpVelocityExampleController: starting()"<<std::endl;
-  // initialize the dmp trajectories (resetting the canonical sytem)
+void DmpStartVelocityController::starting(const ros::Time& /* time */) {
+  std::cout<<"DmpStartVelocityController: starting()"<<std::endl;
+  // initialize the dmp trajectory (resetting the canonical sytem)
   dmpInitialize.resettState(); //sic
-  dmp.resettState(); 
   //assume initialization 
   notInitializedDMP = false;
 
   auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
   if (state_interface == nullptr) {
-    ROS_ERROR("DmpVelocityExampleController: Could not get state interface from hardware when starting the controller");
+    ROS_ERROR("DmpStartVelocityController: Could not get state interface from hardware when starting the controller");
   }
 
   // check for initial joint positions of the robot
@@ -163,41 +161,36 @@ void DmpVelocityExampleController::starting(const ros::Time& /* time */) {
     for (size_t i = 0; i < q0.size(); i++) {
       qInit[i] = state_handle.getRobotState().q_d[i];
       // if only just one joint is not close enough to q0, assume robot is not initialized
-      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.05) {
+      if (std::abs(qInit[i] - q0[i]) > 0.05) {
         notInitializedDMP = true;
       }
     }
   } catch (const hardware_interface::HardwareInterfaceException& e) {
     ROS_ERROR_STREAM(
-        "JointVelocityExampleController: Exception getting state handle: " << e.what());
+        "DmpStartVelocityController: Exception getting state handle: " << e.what());
   }
   elapsed_time_ = ros::Duration(0.0);
 }
 
-void DmpVelocityExampleController::update(const ros::Time& /* time */,
+void DmpStartVelocityController::update(const ros::Time& /* time */,
                                             const ros::Duration& period) {
   elapsed_time_ += period;
 
   std::vector<double> dq(7,0.0000001);
 
-  if (notInitializedDMP) {
+  if (notInitializedDMP) { // this might eventually go
     dmpInitialize.step(externalForce, tau);
     dq = dmpInitialize.getDY();
     if (dmpInitialize.getTrajFinished()) {
-      std::cout<<"JointVelocityExampleController: Initialized to the initial position after time[s]: "<< elapsed_time_<<std::endl;
+      //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
+
+      std::cout<<"DmpStartVelocityController: Initialized to the initial position after time[s]: "<< elapsed_time_<<std::endl;
       notInitializedDMP = false;
-      dmp.resettState();
-    }
-  }
-  else if (executingDMP){
-    dmp.step(externalForce, tau);
-    dq = dmp.getDY();
-    if (dmp.getTrajFinished()) {
-      std::cout<<"JointVelocityExampleController: finished the target trajectory after time[s]: "<< elapsed_time_<<std::endl;
-      executingDMP = false;
-      // joints are not in initial position anymore
-      notInitializedDMP = true;
-      dmpInitialize.resettState();
+
+      //TODO: publish the changed states to a topic so that the controller_manager can switch controllers
+      std_msgs::Bool msg;
+      msg.data = notInitializedDMP;
+      pub.publish(msg);
     }
   }
   else {
@@ -212,17 +205,17 @@ void DmpVelocityExampleController::update(const ros::Time& /* time */,
   }
 }
 
-void DmpVelocityExampleController::stopping(const ros::Time& /*time*/) {
+void DmpStartVelocityController::stopping(const ros::Time& /*time*/) {
   // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
   // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
   // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
 }
 
-void DmpVelocityExampleController::callback(const std_msgs::Bool::ConstPtr& msg) {
+void DmpStartVelocityController::callback(const std_msgs::Bool::ConstPtr& msg) {
   this->executingDMP = msg->data;
 }
 
 }  // namespace prcdmp_node
 
-PLUGINLIB_EXPORT_CLASS(prcdmp_node::DmpVelocityExampleController,
+PLUGINLIB_EXPORT_CLASS(prcdmp_node::DmpStartVelocityController,
                        controller_interface::ControllerBase)

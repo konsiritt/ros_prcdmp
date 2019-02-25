@@ -44,11 +44,13 @@ add_subdirectory(src)
 
 add_library(prcdmp_node
   src/dmp_velocity_example_controller.cpp
+  src/dmpstart_velocity_controller.cpp
+  src/dmp_velocity_controller.cpp
 )
 
 #temporary
-add_executable(talkerDummy src/talkerDummy.cpp)
-target_link_libraries(talkerDummy ${catkin_LIBRARIES})
+add_executable(serviceDummy src/serviceDummy.cpp)
+target_link_libraries(serviceDummy ${catkin_LIBRARIES})
 
 add_dependencies(prcdmp_node
   ${${PROJECT_NAME}_EXPORTED_TARGETS}

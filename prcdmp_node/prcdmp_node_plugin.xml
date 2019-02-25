@@ -1,7 +1,25 @@
 <library path="lib/libprcdmp_node">
-  <class name="prcdmp_node/DmpVelocityExampleController" type="prcdmp_node::DmpVelocityExampleController" base_class_type="controller_interface::ControllerBase">
+  <class name="prcdmp_node/DmpVelocityExampleController"
+         type="prcdmp_node::DmpVelocityExampleController"
+         base_class_type="controller_interface::ControllerBase">
     <description>
-      A controller that executes a short motion based on DMP encoded joint velocities 
+         A controller that executes a short motion based on DMP encoded joint velocities and also has initialization capabilities, very experimental
+    </description>
+  </class>
+
+  <class name="prcdmp_node/DmpVelocityController"
+         type="prcdmp_node::DmpVelocityController"
+         base_class_type="controller_interface::ControllerBase">
+    <description>
+         A controller that executes a defined motion (loaded from config files) based on DMP encoded joint velocities
+    </description>
+  </class>
+
+  <class name="prcdmp_node/DmpStartVelocityController"
+         type="prcdmp_node::DmpStartVelocityController"
+         base_class_type="controller_interface::ControllerBase">
+    <description>
+         A controller that moves the robot into an initial position based on DMP encoded (loaded from files) joint velocities
     </description>
   </class>
 

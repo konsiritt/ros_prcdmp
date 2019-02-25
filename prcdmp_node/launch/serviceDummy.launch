@@ -1,0 +1,4 @@
+<?xml version="1.0" ?>
+<launch>
+  <node name="service_dummy" pkg="prcdmp_node" type="serviceDummy" respawn="false" output="screen"/>
+</launch>

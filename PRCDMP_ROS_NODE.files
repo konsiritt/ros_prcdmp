@@ -1,3 +1,9 @@
+prcdmp_node/include/dmp_velocity_controller.h
+prcdmp_node/include/dmpstart_velocity_controller.h
+prcdmp_node/include/serviceDummy.h
+prcdmp_node/src/dmp_velocity_controller.cpp
+prcdmp_node/src/dmpstart_velocity_controller.cpp
+prcdmp_node/src/serviceDummy.cpp
 prcdmp_node/CMakeLists.txt
 prcdmp_node/config/data/set1/conf/dmpTraj.txt
 prcdmp_node/config/data/set2/conf/dmpTraj.txt
