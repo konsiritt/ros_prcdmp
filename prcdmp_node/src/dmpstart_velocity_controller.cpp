@@ -186,11 +186,11 @@ void DmpStartVelocityController::update(const ros::Time& /* time */,
 
   //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
   if (dmpInitialize.getTrajFinished()) {
-    std::cout<<"DmpStartVelocityController: Initialized to the initial position after time[s]: "<< elapsed_time_<<std::endl;
     notInitializedDMP = false;
 
     //TODO: publish the changed states to a topic so that the controller_manager can switch controllers
     if (!tempPublished) {
+      std::cout<<"DmpStartVelocityController: Initialized to the initial position after time[s]: "<< elapsed_time_<<std::endl;
       std_msgs::Bool msg;
       msg.data = notInitializedDMP;
       pub.publish(msg);

@@ -184,12 +184,12 @@ void DmpVelocityController::update(const ros::Time& /* time */,
 
   //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
   if (dmp.getTrajFinished()) {
-    std::cout<<"DmpVelocityController: finished the target trajectory after time[s]: "<< elapsed_time_<<std::endl;
     // done executing the dmp
     executingDMP = false;
 
     //publish the changed states to a topic so that the controller_manager can switch controllers
     if (!tempPublished) {
+      std::cout<<"DmpVelocityController: finished the target trajectory after time[s]: "<< elapsed_time_<<std::endl;
       std_msgs::Bool msg;
       msg.data = executingDMP;
       pubExec.publish(msg);
