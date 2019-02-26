@@ -122,7 +122,9 @@ bool DmpVelocityController::init(hardware_interface::RobotHW* robot_hardware,
         ROS_ERROR_STREAM(
             "DmpVelocityController: Robot is not in the expected starting position for "
             "this dmp.");
-        return false;
+
+        //TODO: how to know, we are not running this controller? difference between loading and starting...
+        //return false;
       }
     }
   } catch (const hardware_interface::HardwareInterfaceException& e) {
