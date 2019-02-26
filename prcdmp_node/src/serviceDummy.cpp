@@ -7,6 +7,8 @@
 
 serviceDummy::serviceDummy(ros::NodeHandle &node) {
 
+  std::cout<<"serviceDummy: in the constructor now"<<std::endl;
+
   nodeHandle = node;
 
   subInit = node.subscribe("/prcdmp/flag_notInit", 10, &serviceDummy::initializedCallback, this);
@@ -25,9 +27,22 @@ serviceDummy::serviceDummy(ros::NodeHandle &node) {
   if (clientLoad.call(srv)) {
     ROS_INFO("dmpstart_velocity_controller: successfully loaded");
   }
+  if (srv.response.ok){
+    std::cout<<"serviceDummy: response to load service of dmpstart_velocity_controller is ok"<<std::endl;
+  }
+  else {
+    std::cout<<"serviceDummy: response to load service of dmpstart_velocity_controller is NOT ok"<<std::endl;
+  }
+
   srv.request.name = "dmp_velocity_controller";
   if (clientLoad.call(srv)) {
     ROS_INFO("dmp_velocity_controller: successfully loaded");
+  }
+  if (srv.response.ok){
+    std::cout<<"serviceDummy: response to load service of dmp_velocity_controller is ok"<<std::endl;
+  }
+  else {
+    std::cout<<"serviceDummy: response to load service of dmp_velocity_controller is NOT ok"<<std::endl;
   }
 
   // setting up services to call for switching controllers
@@ -43,6 +58,7 @@ serviceDummy::serviceDummy(ros::NodeHandle &node) {
   srvExec.request.stop_controllers = start_controllers;
   srvExec.request.strictness = controller_manager_msgs::SwitchController::Request::BEST_EFFORT; // accepts errors
 
+  std::cout<<"serviceDummy: DONE in the constructor now"<<std::endl;
 }
 
 serviceDummy::~serviceDummy(){
@@ -74,6 +90,13 @@ void serviceDummy::initializedCallback(const std_msgs::Bool::ConstPtr& msg)
     if (!clientSwitch.call(srvExec)) {
       ROS_INFO("switch controller service call failed in initializedCallback");
     }
+    // debugging
+    if (srv.response.ok){
+      std::cout<<"serviceDummy: response to switch service of dmp_velocity_controller is ok"<<std::endl;
+    }
+    else {
+      std::cout<<"serviceDummy: response to switch service of dmp_velocity_controller is NOT ok"<<std::endl;
+    }
   }
   else {
     // state: not initialized, also set executeDMP to false, which in turn will initialize the robot
@@ -91,6 +114,13 @@ void serviceDummy::executedCallback(const std_msgs::Bool::ConstPtr& msg)
     ROS_INFO("switching controllers now to return robot into starting pose");
     if (!clientSwitch.call(srvInit)) {
       ROS_INFO("switch controller service call failed in executedCallback");
+    }
+    // debugging
+    if (srv.response.ok){
+      std::cout<<"serviceDummy: response to switch service of dmpstart_velocity_controller is ok"<<std::endl;
+    }
+    else {
+      std::cout<<"serviceDummy: response to switch service of dmpstart_velocity_controller is NOT ok"<<std::endl;
     }
   }
 }
