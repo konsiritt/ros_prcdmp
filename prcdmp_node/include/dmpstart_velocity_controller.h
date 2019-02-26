@@ -64,8 +64,6 @@ class DmpStartVelocityController : public controller_interface::MultiInterfaceCo
   // flag wheter or not the target dmp is being executed
   bool executingDMP = false;
 
-  // dummy (for now) callback function reacting to boolean input
-  void callback(const std_msgs::Bool::ConstPtr& msg);
   ros::Subscriber sub;
   ros::Publisher pub;
 };

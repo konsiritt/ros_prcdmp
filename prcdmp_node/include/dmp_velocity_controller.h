@@ -68,8 +68,7 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   void callback(const std_msgs::Bool::ConstPtr& msg);
   ros::Subscriber subCoupling;
 
-  // publisher for execution status flags
-  ros::Publisher pubInit;
+  // publisher for execution status flag
   ros::Publisher pubExec;
 };
 

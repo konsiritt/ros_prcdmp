@@ -21,9 +21,6 @@ bool DmpStartVelocityController::init(hardware_interface::RobotHW* robot_hardwar
   // publisher to send end of initialization signal
   pub = node_handle.advertise<std_msgs::Bool>("/prcdmp/flag_notInit", 10);
 
-  // dummy (for now) subscriber that does stuff
-  sub = node_handle.subscribe("/prcdmp/coupling_term", 10, &DmpStartVelocityController::callback, this);
-
   velocity_joint_interface_ = robot_hardware->get<hardware_interface::VelocityJointInterface>();
   if (velocity_joint_interface_ == nullptr) {
     ROS_ERROR(
@@ -169,6 +166,11 @@ void DmpStartVelocityController::starting(const ros::Time& /* time */) {
     ROS_ERROR_STREAM(
         "DmpStartVelocityController: Exception getting state handle: " << e.what());
   }
+  // publish information about initial position of robot: false = initialized
+  std_msgs::Bool msg;
+  msg.data = notInitializedDMP;
+  pub.publish(msg);
+
   elapsed_time_ = ros::Duration(0.0);
 }
 
@@ -178,22 +180,18 @@ void DmpStartVelocityController::update(const ros::Time& /* time */,
 
   std::vector<double> dq(7,0.0000001);
 
-  if (notInitializedDMP) { // this might eventually go
-    dmpInitialize.step(externalForce, tau);
-    dq = dmpInitialize.getDY();
-    if (dmpInitialize.getTrajFinished()) {
-      //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
+  dmpInitialize.step(externalForce, tau);
+  dq = dmpInitialize.getDY();
 
-      std::cout<<"DmpStartVelocityController: Initialized to the initial position after time[s]: "<< elapsed_time_<<std::endl;
-      notInitializedDMP = false;
+  //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
+  if (dmpInitialize.getTrajFinished()) {
+    std::cout<<"DmpStartVelocityController: Initialized to the initial position after time[s]: "<< elapsed_time_<<std::endl;
+    notInitializedDMP = false;
 
-      //TODO: publish the changed states to a topic so that the controller_manager can switch controllers
-      std_msgs::Bool msg;
-      msg.data = notInitializedDMP;
-      pub.publish(msg);
-    }
-  }
-  else {
+    //TODO: publish the changed states to a topic so that the controller_manager can switch controllers
+    std_msgs::Bool msg;
+    msg.data = notInitializedDMP;
+    pub.publish(msg);
   }
   
   double omega = 0.0; 
@@ -209,10 +207,6 @@ void DmpStartVelocityController::stopping(const ros::Time& /*time*/) {
   // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
   // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
   // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
-}
-
-void DmpStartVelocityController::callback(const std_msgs::Bool::ConstPtr& msg) {
-  this->executingDMP = msg->data;
 }
 
 }  // namespace prcdmp_node

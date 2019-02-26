@@ -18,10 +18,9 @@ bool DmpVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   robotHardware = robot_hardware;
   nodeHandle = &node_handle;
 
-  pubInit = node_handle.advertise<std_msgs::Bool>("/prcdmp/flag_notInit", 10);
   pubExec = node_handle.advertise<std_msgs::Bool>("/prcdmp/flag_exec", 10);
 
-  // subscriber that handles changes to the dmp coupling term
+  // subscriber that handles changes to the dmp coupling term: TODO: change to coupling term
   subCoupling = node_handle.subscribe("/prcdmp/flag_exec", 10, &DmpVelocityController::callback, this);
 
   velocity_joint_interface_ = robot_hardware->get<hardware_interface::VelocityJointInterface>();
@@ -179,26 +178,20 @@ void DmpVelocityController::update(const ros::Time& /* time */,
 
   std::vector<double> dq(7,0.0000001);
 
-
   dmp.step(externalForce, tau);
   dq = dmp.getDY();
-  if (dmp.getTrajFinished()) {
-    //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
 
+  //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
+  if (dmp.getTrajFinished()) {
     std::cout<<"DmpVelocityController: finished the target trajectory after time[s]: "<< elapsed_time_<<std::endl;
     // done executing the dmp
     executingDMP = false;
-    // joints are not in initial position anymore
-    notInitializedDMP = true;
 
     //publish the changed states to a topic so that the controller_manager can switch controllers
     std_msgs::Bool msg;
     msg.data = executingDMP;
     pubExec.publish(msg);
-    msg.data = notInitializedDMP;
-    pubInit.publish(msg);
   }
-
   
   double omega = 0.0; 
   int it = 0;
