@@ -22,7 +22,7 @@ bool DmpVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   pubExec = node_handle.advertise<std_msgs::Bool>("/prcdmp/flag_exec", 10);
 
   // subscriber that handles changes to the dmp coupling term
-  subCoupling = node_handle.subscribe("/prcdmp/coupling_term", 10, &DmpVelocityController::callback, this);
+  subCoupling = node_handle.subscribe("/prcdmp/flag_exec", 10, &DmpVelocityController::callback, this);
 
   velocity_joint_interface_ = robot_hardware->get<hardware_interface::VelocityJointInterface>();
   if (velocity_joint_interface_ == nullptr) {
@@ -145,6 +145,7 @@ void DmpVelocityController::starting(const ros::Time& /* time */) {
   std::cout<<"DmpVelocityController: starting()"<<std::endl;
   // initialize the dmp trajectory (resetting the canonical sytem)
   dmp.resettState(); 
+  std::cout<<"DmpVelocityController: dmp state reset done"<<std::endl;
   //assume initialization 
   notInitializedDMP = false;
 
@@ -162,6 +163,7 @@ void DmpVelocityController::starting(const ros::Time& /* time */) {
       // if only just one joint is not close enough to q0, assume robot is not initialized
       if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.05) {
         notInitializedDMP = true;
+        std::cout<<"DmpVelocityController: joint #"<<i<<" is not in the initial position yet"<<std::endl;
       }
     }
   } catch (const hardware_interface::HardwareInterfaceException& e) {
@@ -217,7 +219,9 @@ void DmpVelocityController::stopping(const ros::Time& /*time*/) {
 
 //TODO: adapt to react to a change of the coupling term as a topic
 void DmpVelocityController::callback(const std_msgs::Bool::ConstPtr& msg) {
+
   this->executingDMP = msg->data;
+  std::cout<<"DmpVelocityController: changed boolean executingDMP to: "<< executingDMP <<std::endl;
 }
 
 }  // namespace prcdmp_node
