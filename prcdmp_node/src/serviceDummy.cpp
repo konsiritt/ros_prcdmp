@@ -21,6 +21,7 @@ serviceDummy::serviceDummy(ros::NodeHandle &node) {
 
   pubExec = node.advertise<std_msgs::Bool>("/prcdmp/flag_exec", 10);
 
+  /*
   // load controllers initially
   controller_manager_msgs::LoadController srv;
   srv.request.name = "dmpstart_velocity_controller";
@@ -44,6 +45,7 @@ serviceDummy::serviceDummy(ros::NodeHandle &node) {
   else {
     std::cout<<"serviceDummy: response to load service of dmp_velocity_controller is NOT ok"<<std::endl;
   }
+  */
 
   // setting up services to call for switching controllers
   std::vector < std::string > start_controllers;
@@ -80,9 +82,9 @@ void serviceDummy::initializedCallback(const std_msgs::Bool::ConstPtr& msg)
 {
   if (!msg->data) {
     //TODO: this is the case that is switched upon other conditions, i.e. is the learner ready etc.
-    std_msgs::Bool msg;
-    msg.data = true;
-    pubExec.publish(msg);
+    //std_msgs::Bool msg;
+    //msg.data = true;
+    //pubExec.publish(msg);
 
     ros::Duration(1.5).sleep();
 

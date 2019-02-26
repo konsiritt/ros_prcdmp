@@ -64,7 +64,6 @@ class DmpStartVelocityController : public controller_interface::MultiInterfaceCo
   // flag wheter or not the target dmp is being executed
   bool executingDMP = false;
 
-  ros::Subscriber sub;
   ros::Publisher pub;
 };
 
