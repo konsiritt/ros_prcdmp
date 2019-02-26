@@ -217,7 +217,7 @@ void DmpVelocityController::stopping(const ros::Time& /*time*/) {
 void DmpVelocityController::callback(const std_msgs::Bool::ConstPtr& msg) {
 
   this->executingDMP = msg->data;
-  std::cout<<"DmpVelocityController: changed boolean executingDMP to: "<< executingDMP <<std::endl;
+  //std::cout<<"DmpVelocityController: changed boolean executingDMP to: "<< executingDMP <<std::endl;
 }
 
 }  // namespace prcdmp_node

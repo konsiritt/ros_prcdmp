@@ -21,6 +21,8 @@ serviceDummy::serviceDummy(ros::NodeHandle &node) {
 
   pubExec = node.advertise<std_msgs::Bool>("/prcdmp/flag_exec", 10);
 
+  notInit = false;
+
   /*
   // load controllers initially
   controller_manager_msgs::LoadController srv;
@@ -86,6 +88,8 @@ void serviceDummy::initializedCallback(const std_msgs::Bool::ConstPtr& msg)
     //msg.data = true;
     //pubExec.publish(msg);
 
+    notInit = msg->data;
+
     ros::Duration(1.5).sleep();
 
     ROS_INFO("switching controllers now to start execution of DMP controller dmp_velocity_controller");
@@ -100,11 +104,14 @@ void serviceDummy::initializedCallback(const std_msgs::Bool::ConstPtr& msg)
       std::cout<<"serviceDummy: response to switch service of dmp_velocity_controller is NOT ok"<<std::endl;
     }
   }
-  else {
+  else if (notInit!=msg->data){
+    notInit = msg->data;
     // state: not initialized, also set executeDMP to false, which in turn will initialize the robot
     std_msgs::Bool msg;
     msg.data = false;
     pubExec.publish(msg);
+  }
+  else {
   }
 }
 

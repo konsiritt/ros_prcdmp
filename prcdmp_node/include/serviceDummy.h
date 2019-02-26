@@ -37,6 +37,9 @@ private:
   ros::Subscriber subExec;
 
   ros::Publisher pubExec;
+
+  bool notInit;
+  bool exec;
 };
 
 
