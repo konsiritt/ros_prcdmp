@@ -70,6 +70,8 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
 
   // publisher for execution status flag
   ros::Publisher pubExec;
+
+  bool tempPublished  = false;
 };
 
 }  // namespace prcdmp_node

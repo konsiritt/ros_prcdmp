@@ -147,6 +147,7 @@ void DmpVelocityController::starting(const ros::Time& /* time */) {
   std::cout<<"DmpVelocityController: dmp state reset done"<<std::endl;
   //assume initialization 
   notInitializedDMP = false;
+  tempPublished = false;
 
   auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
   if (state_interface == nullptr) {
@@ -188,9 +189,13 @@ void DmpVelocityController::update(const ros::Time& /* time */,
     executingDMP = false;
 
     //publish the changed states to a topic so that the controller_manager can switch controllers
-    std_msgs::Bool msg;
-    msg.data = executingDMP;
-    pubExec.publish(msg);
+    if (!tempPublished) {
+      std_msgs::Bool msg;
+      msg.data = executingDMP;
+      pubExec.publish(msg);
+      tempPublished = true;
+    }
+
   }
   
   double omega = 0.0; 
