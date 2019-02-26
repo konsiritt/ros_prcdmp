@@ -179,28 +179,26 @@ void DmpVelocityController::update(const ros::Time& /* time */,
 
   std::vector<double> dq(7,0.0000001);
 
-if (executingDMP){
-    dmp.step(externalForce, tau);
-    dq = dmp.getDY();
-    if (dmp.getTrajFinished()) {
-      //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
 
-      std::cout<<"DmpVelocityController: finished the target trajectory after time[s]: "<< elapsed_time_<<std::endl;
-      // done executing the dmp
-      executingDMP = false;
-      // joints are not in initial position anymore
-      notInitializedDMP = true;      
+  dmp.step(externalForce, tau);
+  dq = dmp.getDY();
+  if (dmp.getTrajFinished()) {
+    //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
 
-      //publish the changed states to a topic so that the controller_manager can switch controllers
-      std_msgs::Bool msg;
-      msg.data = executingDMP;
-      pubExec.publish(msg);
-      msg.data = notInitializedDMP;
-      pubInit.publish(msg);
-    }
+    std::cout<<"DmpVelocityController: finished the target trajectory after time[s]: "<< elapsed_time_<<std::endl;
+    // done executing the dmp
+    executingDMP = false;
+    // joints are not in initial position anymore
+    notInitializedDMP = true;
+
+    //publish the changed states to a topic so that the controller_manager can switch controllers
+    std_msgs::Bool msg;
+    msg.data = executingDMP;
+    pubExec.publish(msg);
+    msg.data = notInitializedDMP;
+    pubInit.publish(msg);
   }
-  else {
-  }
+
   
   double omega = 0.0; 
   int it = 0;
