@@ -8,5 +8,25 @@ dmp_velocity_example_controller:
         - panda_joint5
         - panda_joint6
         - panda_joint7
+dmp_velocity_controller:
+    type: prcdmp_node/DmpVelocityController
+    joint_names:
+        - panda_joint1
+        - panda_joint2
+        - panda_joint3
+        - panda_joint4
+        - panda_joint5
+        - panda_joint6
+        - panda_joint7
+dmpstart_velocity_controller:
+    type: prcdmp_node/DmpStartVelocityController
+    joint_names:
+        - panda_joint1
+        - panda_joint2
+        - panda_joint3
+        - panda_joint4
+        - panda_joint5
+        - panda_joint6
+        - panda_joint7
 
 
