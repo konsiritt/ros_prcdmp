@@ -91,7 +91,7 @@ void serviceDummy::initializedCallback(const std_msgs::Bool::ConstPtr& msg)
       ROS_INFO("switch controller service call failed in initializedCallback");
     }
     // debugging
-    if (srv.response.ok){
+    if (srvExec.response.ok){
       std::cout<<"serviceDummy: response to switch service of dmp_velocity_controller is ok"<<std::endl;
     }
     else {
@@ -116,7 +116,7 @@ void serviceDummy::executedCallback(const std_msgs::Bool::ConstPtr& msg)
       ROS_INFO("switch controller service call failed in executedCallback");
     }
     // debugging
-    if (srv.response.ok){
+    if (srvInit.response.ok){
       std::cout<<"serviceDummy: response to switch service of dmpstart_velocity_controller is ok"<<std::endl;
     }
     else {
