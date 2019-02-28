@@ -1,0 +1,43 @@
+<?xml version="1.0" ?>
+<launch>
+  <arg name="robot_ip" />
+  <arg name="load_gripper" default="true" />
+  <arg name="data_set" />
+  
+  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find franka_description)/robots/panda_arm_hand.urdf.xacro'" if="$(arg load_gripper)" />
+  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find franka_description)/robots/panda_arm.urdf.xacro'" unless="$(arg load_gripper)" />
+
+  <include file="$(find franka_gripper)/launch/franka_gripper.launch" if="$(arg load_gripper)">
+    <arg name="robot_ip" value="$(arg robot_ip)" />
+  </include>
+
+  <node name="franka_control" pkg="franka_control" type="franka_control_node" output="screen" required="true">
+    <rosparam command="load" file="$(find franka_control)/config/franka_control_node.yaml" />
+    <param name="robot_ip" value="$(arg robot_ip)" />
+  </node>
+
+  <rosparam command="load" file="$(find franka_control)/config/default_controllers.yaml" />
+  <param name="franka_state_controller/publish_rate" value="1000"/>
+  <node name="state_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="franka_state_controller">
+  </node>
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen"/>
+  <node name="joint_state_publisher" type="joint_state_publisher" pkg="joint_state_publisher" output="screen">
+    <rosparam if="$(arg load_gripper)" param="source_list">[franka_state_controller/joint_states, franka_gripper/joint_states] </rosparam>
+    <rosparam unless="$(arg load_gripper)" param="source_list">[franka_state_controller/joint_states] </rosparam>
+    <param name="rate" value="1000"/>
+  </node>
+  <node name="joint_state_desired_publisher" type="joint_state_publisher" pkg="joint_state_publisher" output="screen">
+    <rosparam if="$(arg load_gripper)" param="source_list">[franka_state_controller/joint_states_desired, franka_gripper/joint_states] </rosparam>
+    <rosparam unless="$(arg load_gripper)" param="source_list">[franka_state_controller/joint_states_desired] </rosparam>
+    <param name="rate" value="50"/>
+    <remap from="/joint_states" to="/joint_states_desired" />
+</node>
+
+
+  <rosparam command="load" file="$(find prcdmp_node)/config/prcdmp_node.yaml" />
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen"  args="dmpstart_velocity_controller"/>
+  <param name="dmp_velocity_controller/data_set" value="$(arg data_set)" type="str" />
+  <node name="controller_spawner_stopped" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--stopped dmp_velocity_controller"/>
+  <!--
+  <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find franka_example_controllers)/launch/robot.rviz"/> -->
+</launch>
