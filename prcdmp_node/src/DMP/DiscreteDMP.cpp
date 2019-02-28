@@ -21,10 +21,17 @@ DiscreteDMP::DiscreteDMP(int nDMPs, int nBFs, double dt, std::vector<double> &y0
     checkOffset();
 }
 
-void DiscreteDMP::setInitialPosition (std::vector<double> &y0)
+void DiscreteDMP::setInitialPosition (std::vector<double> &y_0)
 {
-  this->y0 = y0;
-  this->resettState();
+  if (y0.size()==y_0.size()){
+    this->y0 = y_0;
+    this->resettState();
+  }
+  else {
+    std::cerr<<"setInitialPosition: wrong vector size specified!"<<std::endl;
+  }
+
+
 }
 
 void DiscreteDMP::setEndThreshold(double thrsh)
