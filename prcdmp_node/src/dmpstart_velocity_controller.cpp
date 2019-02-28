@@ -170,9 +170,9 @@ void DmpStartVelocityController::starting(const ros::Time& /* time */) {
   dmpInitialize.setInitialPosition(qInitV); // also initializes the dmp trajectory (resetting the canonical sytem)
 
   // publish information about initial position of robot: false = initialized
-  std_msgs::Bool msg;
-  msg.data = notInitializedDMP;
-  pub.publish(msg);
+  //std_msgs::Bool msg;
+  //msg.data = notInitializedDMP;
+  //pub.publish(msg);
 
   elapsed_time_ = ros::Duration(0.0);
 }

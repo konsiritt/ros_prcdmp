@@ -144,7 +144,6 @@ void DmpVelocityController::starting(const ros::Time& /* time */) {
   std::cout<<"DmpVelocityController: starting()"<<std::endl;
   // initialize the dmp trajectory (resetting the canonical sytem)
   dmp.resettState(); 
-  std::cout<<"DmpVelocityController: dmp state reset done"<<std::endl;
   //assume initialization 
   notInitializedDMP = false;
   tempPublished = false;
