@@ -141,8 +141,6 @@ bool DmpStartVelocityController::init(hardware_interface::RobotHW* robot_hardwar
 
 void DmpStartVelocityController::starting(const ros::Time& /* time */) {
   std::cout<<"DmpStartVelocityController: starting()"<<std::endl;
-  // initialize the dmp trajectory (resetting the canonical sytem)
-  dmpInitialize.resettState(); //sic
   //assume initialization 
   notInitializedDMP = false;
   tempPublished = false;
@@ -167,6 +165,10 @@ void DmpStartVelocityController::starting(const ros::Time& /* time */) {
     ROS_ERROR_STREAM(
         "DmpStartVelocityController: Exception getting state handle: " << e.what());
   }
+  // adapt the dmp to the initial joint positions of the robot
+  std::vector<double> qInitV(qInit.begin(), qInit.end());
+  dmpInitialize.setInitialPosition(qInitV); // also initializes the dmp trajectory (resetting the canonical sytem)
+
   // publish information about initial position of robot: false = initialized
   std_msgs::Bool msg;
   msg.data = notInitializedDMP;

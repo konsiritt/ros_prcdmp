@@ -33,7 +33,7 @@ public:
 
     ~DiscreteDMP(){};
 
-    void setInitialPosition (std::vector<double> &y0);
+    void setInitialPosition (std::vector<double> &y_0);
 
     void setEndThreshold (double thrsh);
 
