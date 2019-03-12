@@ -178,8 +178,7 @@ void DmpVelocityController::update(const ros::Time& /* time */,
 
   std::vector<double> dq(7,0.0000001);
 
-  dmp.step(externalForce, tau);
-  dq = dmp.getDY();
+  dq = dmp.step(externalForce, tau);
 
   //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
   if (dmp.getTrajFinished()) {

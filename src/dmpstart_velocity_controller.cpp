@@ -91,13 +91,13 @@ bool DmpStartVelocityController::init(hardware_interface::RobotHW* robot_hardwar
   config.fillTrajectoryPath(episodeNr);
 
   std::vector<double> externalForce;
-  std::vector<std::vector<double>> w ;
-  if (episodeNr ==0) {
-      UTILS::loadWeights(config.getInitialWPath(),w);
-  }
-  else {
-      UTILS::loadWeights(config.getwPath(),w);
-  }
+//  std::vector<std::vector<double>> w ;
+//  if (episodeNr ==0) {
+//      UTILS::loadWeights(config.getInitialWPath(),w);
+//  }
+//  else {
+//      UTILS::loadWeights(config.getwPath(),w);
+//  }
 
   // convert arrays to vectors
   std::vector<double> y0v(q0.begin(), q0.end());
@@ -120,9 +120,10 @@ bool DmpStartVelocityController::init(hardware_interface::RobotHW* robot_hardwar
   }
 
   // initialize dmp that moves to the initial position 
-  std::vector<std::vector<double>> wZero(w.size(),std::vector<double>(w[0].size(), 0.0));
+//  std::vector<std::vector<double>> wZero(w.size(),std::vector<double>(w[0].size(), 0.0));
   std::vector<double> robotQ0(qInit.begin(), qInit.end());
-  DiscreteDMP dmpTemp2(dofs, nBFs, dt, robotQ0, y0v, wZero, gainA, gainB);     
+//  DiscreteDMP dmpTemp2(dofs, nBFs, dt, robotQ0, y0v, wZero, gainA, gainB);
+  DiscreteDMP dmpTemp2(dofs, dt, robotQ0, y0v, gainA, gainB);
   dmpInitialize = dmpTemp2;
 
 
@@ -183,8 +184,7 @@ void DmpStartVelocityController::update(const ros::Time& /* time */,
 
   std::vector<double> dq(7,0.0000001);
 
-  dmpInitialize.step(externalForce, tau);
-  dq = dmpInitialize.getDY();
+  dq = dmpInitialize.simpleStep(externalForce, tau);
 
   //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
   if (dmpInitialize.getTrajFinished()) {

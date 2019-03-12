@@ -29,6 +29,9 @@ public:
                 std::vector<std::vector<double>> &w, std::vector<double> &gainA,
                 std::vector<double> &gainB, std::string pattern ="discrete");
 
+    DiscreteDMP(int nDMPs, double dt, std::vector<double> &y0, std::vector<double> &goal,
+                std::vector<double> &gainA, std::vector<double> &gainB, std::string pattern ="discrete");
+
     DiscreteDMP(){std::cerr<<"created an empty instance of DiscreteDMP"<<std::endl;};
 
     ~DiscreteDMP(){};
@@ -36,6 +39,11 @@ public:
     void setInitialPosition (std::vector<double> &y_0);
 
     void setEndThreshold (double thrsh);
+
+    std::vector<double> step( std::vector<double> &externalForce, double tau=1.0, double error=0.0);
+
+    std::vector<double> simpleStep( std::vector<double> &externalForce, double tau=1.0, double error=0.0);
+
 
 protected:
     /// generates the Gaussian basis function
