@@ -18,7 +18,9 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   robotHardware = robot_hardware;
   nodeHandle = &node_handle;
 
-  pubExec = node_handle.advertise<std_msgs::Bool>("/prcdmp/flag_exec", 10);
+  pubExec = node_handle.advertise<std_msgs::Bool>("/prcdmp/flag_exec", 1000);
+
+  pubBatch = node_handle.advertise<common_msgs::SamplesBatch>("/prcdmp/episodic_batch", 1000);
 
   // subscriber that handles changes to the dmp coupling term: TODO: change to coupling term
   subCoupling = node_handle.subscribe("/prcdmp/episodic_batch", 10, &DmpCtVelocityController::callback, this);
@@ -108,6 +110,13 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   // initialize dmp runtime object
   DiscreteDMP dmpTemp(dofs, nBFs, dt, y0v, goalv, w, gainA, gainB);
   dmp = dmpTemp;
+  // initialize reference dmp object and rollout without use of coupling terms
+  refDmp = dmpTemp;
+  std::vector<std::vector<double>> dummY, dummYY;
+  refDmp.rollout(refDmpTraj,dummY,dummYY,externalForce,tau, -1, 0);
+
+  DiscreteDMP dmpTemp2(dofs,dt,y0v,goalv,gainA,gainB);
+  couplingDmp = dmpTemp2;
 
   // check for initial joint positions of the robot
   try {
@@ -144,9 +153,21 @@ void DmpCtVelocityController::starting(const ros::Time& /* time */) {
   std::cout<<"DmpCtVelocityController: starting()"<<std::endl;
   // initialize the dmp trajectory (resetting the canonical sytem)
   dmp.resettState(); 
-  //assume initialization 
+  couplingDmp.resettState();
+
+  //reset iterator for reference joint positions
+  iterateRef = 0;
+
+  //reset the message batch for reward information
+  msgBatch.samples.clear();
+
+  //assume initialization
   notInitializedDMP = false;
   tempPublished = false;
+
+  //set current coupling term to zero
+  std::vector<double> tempVec(q0.size(),0.0);
+  couplingTerm = tempVec;
 
   auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
   if (state_interface == nullptr) {
@@ -176,9 +197,14 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
                                             const ros::Duration& period) {
   elapsed_time_ += period;
 
-  std::vector<double> dq(7,0.0000001);
-
+  //advance the coupling term
+  couplingDmp.step(externalForce, 100); //TODO: configure this parameter
+  couplingTerm = couplingDmp.getY();
+  dmp.setCouplingTerm(couplingTerm);
+  //advance the actual dmp
+  std::vector<double> dq(q0.size(),0.0000001);
   dq = dmp.step(externalForce, tau);
+  qDmp = dmp.getY();
 
   //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
   if (dmp.getTrajFinished()) {
@@ -193,29 +219,46 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
       pubExec.publish(msg);
       tempPublished = true;
     }
-
   }
-  
+
   double omega = 0.0; 
   int it = 0;
   for (auto joint_handle : velocity_joint_handles_) {
-    omega = dq[it];
+    omega = refDmpTraj[iterateRef][it];//dq[it];
     joint_handle.setCommand(omega);
     it++;
   }
+  // add the current message for later publishing it
+  addCurrMessage();
 }
 
 void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
   // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
   // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
   // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
+    pubBatch.publish(msgBatch);
 }
 
 //TODO: adapt to react to a change of the coupling term as a topic
 void DmpCtVelocityController::callback(const common_msgs::CouplingTerm::ConstPtr& msg) {
-
+  msgCoupling = *msg;
   std::vector<double> temp(msg->data.begin(),msg->data.end());
-  this->couplingTerm = temp;
+  couplingDmp.setFinalPosition(temp);
+  couplingDmp.setInitialPosition(couplingTerm);
+}
+
+void DmpCtVelocityController::addCurrMessage(){
+    common_msgs::MDPSample tempMsg;
+    tempMsg.ct = msgCoupling;
+    tempMsg.reward = 0;
+    tempMsg.mask = 0;
+    boost::array<double,7> tempArray = {0};
+    for (int i=0; i < qDmp.size(); ++i) {
+        tempArray[i] = refDmpTraj[iterateRef][i] - qDmp[i];
+    }
+    iterateRef++;
+    tempMsg.q_offset = tempArray;
+    msgBatch.samples.push_back(tempMsg);
 }
 
 }  // namespace prcdmp_node

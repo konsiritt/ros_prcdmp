@@ -38,6 +38,8 @@ public:
 
     void setInitialPosition (std::vector<double> &y_0);
 
+    void setFinalPosition (std::vector<double> &y_end);
+
     void setEndThreshold (double thrsh);
 
 //    std::vector<double> step( std::vector<double> &externalForce, double tau=1.0, double error=0.0);

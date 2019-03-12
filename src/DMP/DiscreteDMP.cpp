@@ -39,6 +39,17 @@ void DiscreteDMP::setInitialPosition (std::vector<double> &y_0)
   }
 }
 
+void DiscreteDMP::setFinalPosition (std::vector<double> &y_end)
+{
+  if (goal.size()==y_end.size()){
+    this->goal = y_end;
+    this->resettState();
+  }
+  else {
+    std::cerr<<"setFinalPosition: wrong vector size specified!"<<std::endl;
+  }
+}
+
 void DiscreteDMP::setEndThreshold(double thrsh)
 {
   this->endThreshold = thrsh;

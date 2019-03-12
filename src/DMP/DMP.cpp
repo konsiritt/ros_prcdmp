@@ -192,6 +192,10 @@ int DMP::getTimesteps()
     return timesteps;
 }
 
+std::vector<double> DMP::getY()
+{
+    return y;
+}
 
 std::vector<double> DMP::getDY()
 {

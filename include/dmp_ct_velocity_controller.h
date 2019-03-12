@@ -13,6 +13,8 @@
 #include <ros/time.h>
 #include "std_msgs/Bool.h"
 #include "common_msgs/CouplingTerm.h"
+#include "common_msgs/MDPSample.h"
+#include "common_msgs/SamplesBatch.h"
 
 #include "UTILS/Config.h"
 #include <string>
@@ -38,6 +40,9 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   void stopping(const ros::Time&) override;
 
  private:
+  // add the message information to the reward batch
+  void addCurrMessage();
+
   hardware_interface::VelocityJointInterface* velocity_joint_interface_;
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
   ros::Duration elapsed_time_;
@@ -50,6 +55,14 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
 
   // dmp class
   DiscreteDMP dmp;
+  // reference dmp without coupling term
+  DiscreteDMP refDmp;
+  // reference dmp joint states without coupling term
+  std::vector<std::vector<double>> refDmpTraj;
+  // iterator for reference step
+  int iterateRef;
+  // coupling term smoothing dmp
+  DiscreteDMP couplingDmp;
   // time scaling factor: tau<1 -> slower execution
   double tau; 
   std::vector<double> externalForce;
@@ -58,7 +71,9 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
 
   // initial joint position in the dmp
   std::array<double,7> q0;
-  // current joint position of the robot
+  // current joint position of the dmp
+  std::vector<double> qDmp;
+  // initial joint position of the robot
   std::array<double,7> qInit;
   std::string robotIp;
 
@@ -73,6 +88,13 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
 
   // publisher for execution status flag
   ros::Publisher pubExec;
+
+  // publisher for reward batches
+  ros::Publisher pubBatch;
+  // samplesBatch message
+  common_msgs::SamplesBatch msgBatch;
+  // current CouplingTerm message received
+  common_msgs::CouplingTerm msgCoupling;
 
   bool tempPublished  = false;
 };

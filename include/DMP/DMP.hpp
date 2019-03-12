@@ -70,7 +70,7 @@ public:
      * @param externalForce
      * @param tau time scaling factor (<1 -> slowed down)
      * @param error
-     * @return
+     * @return the dmp velocity vector
      */
     virtual std::vector<double> step( std::vector<double> &externalForce, double tau=1.0, double error=0.0);
 
@@ -79,7 +79,7 @@ public:
      * @param externalForce
      * @param tau
      * @param error
-     * @return
+     * @return the dmp velocity vector
      */
     virtual std::vector<double> simpleStep( std::vector<double> &externalForce, double tau=1.0, double error=0.0);
 
@@ -94,6 +94,11 @@ public:
      */
     int getTimesteps();
 
+    /**
+     * @brief getDY
+     * @return the dmp velocities/ change in position
+     */
+    std::vector<double> getY();
     /**
      * @brief getDY
      * @return the dmp velocities/ change in position
