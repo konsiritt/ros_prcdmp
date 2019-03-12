@@ -23,4 +23,12 @@
     </description>
   </class>
 
+  <class name="prcdmp_node/DmpCtVelocityController"
+         type="prcdmp_node::DmpCtVelocityController"
+         base_class_type="controller_interface::ControllerBase">
+    <description>
+         A controller that executes a defined motion (loaded from config files) based on DMP encoded joint velocities, that listens to newly published coupling terms that affect the trajectory
+    </description>
+  </class>
+
 </library>

@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  common_msgs
 )
 
 find_package(Eigen3 REQUIRED)
@@ -46,6 +47,7 @@ add_library(prcdmp_node
   src/dmp_velocity_example_controller.cpp
   src/dmpstart_velocity_controller.cpp
   src/dmp_velocity_controller.cpp
+  src/dmp_ct_velocity_controller.cpp
 )
 
 #temporary
