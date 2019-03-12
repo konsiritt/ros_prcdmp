@@ -9,7 +9,7 @@ DMP::DMP(int nDMPs, int nBFs, double dt, std::vector<double> &y0, std::vector<do
          std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB, std::string pattern)
   :cs(dt), nDMPs(nDMPs), nBFs(nBFs), dt(dt), y0(y0), goal(goal), couplingTerm(nDMPs,0), endThreshold(0.01), trajFinished(false), doSimpleRollout(false)
 {
-    if (w.size()==nDMPs)
+    if (w.size()>=nDMPs) // ugly, but somehow w.size is 8 instead of 7, must be sth with reading file
     {
         if (w[0].size()==nBFs)
         {
