@@ -29,7 +29,7 @@ dmpstart_velocity_controller:
         - panda_joint6
         - panda_joint7
 dmp_ct_velocity_controller:
-    type: prcdmp_node/DmpVelocityController
+    type: prcdmp_node/DmpCtVelocityController
     joint_names:
         - panda_joint1
         - panda_joint2

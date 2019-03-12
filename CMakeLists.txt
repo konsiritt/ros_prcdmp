@@ -59,7 +59,7 @@ add_dependencies(prcdmp_node
   ${catkin_EXPORTED_TARGETS}
 )
 
-link_directories(${CMAKE_HOME_DIRECTORY}/lib)
+#link_directories(${CMAKE_HOME_DIRECTORY}/lib)
 
 target_link_libraries(prcdmp_node PUBLIC
   ${Franka_LIBRARIES}
