@@ -40,9 +40,9 @@ public:
 
     void setEndThreshold (double thrsh);
 
-    std::vector<double> step( std::vector<double> &externalForce, double tau=1.0, double error=0.0);
+//    std::vector<double> step( std::vector<double> &externalForce, double tau=1.0, double error=0.0);
 
-    std::vector<double> simpleStep( std::vector<double> &externalForce, double tau=1.0, double error=0.0);
+//    std::vector<double> simpleStep( std::vector<double> &externalForce, double tau=1.0, double error=0.0);
 
 
 protected:
