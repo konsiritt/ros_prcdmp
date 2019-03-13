@@ -7,7 +7,7 @@
 
 DMP::DMP(int nDMPs, int nBFs, double dt, std::vector<double> &y0, std::vector<double> &goal,
          std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB, std::string pattern)
-  :cs(dt), nDMPs(nDMPs), nBFs(nBFs), dt(dt), y0(y0), goal(goal), couplingTerm(nDMPs,0), endThreshold(0.01), trajFinished(false), doSimpleRollout(false)
+  :cs(dt), nDMPs(nDMPs), nBFs(nBFs), dt(dt), y0(y0), goal(goal), couplingTerm(nDMPs,0.0), endThreshold(0.01), trajFinished(false), doSimpleRollout(false)
 {
     if (w.size()>=nDMPs) // ugly, but somehow w.size is 8 instead of 7, must be sth with reading file
     {
@@ -17,7 +17,7 @@ DMP::DMP(int nDMPs, int nBFs, double dt, std::vector<double> &y0, std::vector<do
         }
     }
 
-    this->gainA = gainA.size()? gainA : std::vector<double>(this->nDMPs, 25);
+    this->gainA = gainA.size()? gainA : std::vector<double>(this->nDMPs, 25.0);
     if(gainB.size())
     {
         this->gainB = gainB;
@@ -26,7 +26,7 @@ DMP::DMP(int nDMPs, int nBFs, double dt, std::vector<double> &y0, std::vector<do
     {
         for(int i=0;i<this->nDMPs;i++)
         {
-            this->gainB.push_back(this->gainA[i]/4);
+            this->gainB.push_back(this->gainA[i]/4.0);
         }
     }
 
@@ -37,12 +37,12 @@ DMP::DMP(int nDMPs, int nBFs, double dt, std::vector<double> &y0, std::vector<do
 
 DMP::DMP(int nDMPs, double dt, std::vector<double> &y0, std::vector<double> &goal, std::vector<double> &gainA,
          std::vector<double> &gainB, std::string pattern)
- :cs(dt), nDMPs(nDMPs), nBFs(0), dt(dt), y0(y0), goal(goal), couplingTerm(nDMPs,0), endThreshold(0.01), trajFinished(false), doSimpleRollout(false)
+ :cs(dt), nDMPs(nDMPs), nBFs(0), dt(dt), y0(y0), goal(goal), couplingTerm(nDMPs,0.0), endThreshold(0.01), trajFinished(false), doSimpleRollout(false)
 {
     std::vector<std::vector<double>> wTemp(nDMPs,std::vector<double>(0, 0.0));
     w = wTemp;
 
-    this->gainA = gainA.size()? gainA : std::vector<double>(this->nDMPs, 25);
+    this->gainA = gainA.size()? gainA : std::vector<double>(this->nDMPs, 25.0);
     if(gainB.size())
     {
         this->gainB = gainB;
@@ -51,7 +51,7 @@ DMP::DMP(int nDMPs, double dt, std::vector<double> &y0, std::vector<double> &goa
     {
         for(int i=0;i<this->nDMPs;i++)
         {
-            this->gainB.push_back(this->gainA[i]/4);
+            this->gainB.push_back(this->gainA[i]/4.0);
         }
     }
 
@@ -63,8 +63,8 @@ DMP::DMP(int nDMPs, double dt, std::vector<double> &y0, std::vector<double> &goa
 void DMP::resettState()
 {
     y   = y0;
-    dy  = std::vector<double> (nDMPs, 0);
-    ddy = std::vector<double> (nDMPs, 0);
+    dy  = std::vector<double> (nDMPs, 0.0);
+    ddy = std::vector<double> (nDMPs, 0.0);
     cs.resettState();
     trajFinished = false;
 }
@@ -98,7 +98,7 @@ void DMP::rollout(std::vector<std::vector<double>> &yTrack, std::vector<std::vec
 
     if (timeSteps==-1)
     {
-        timeSteps = this->timesteps/tau;
+        timeSteps = this->timesteps/tau *1.1; //TODO: add a stopping criterion?! 1.1: this is to assure that there are enough steps rolled out
     }
 
     for (int k=0;k<7;k++)

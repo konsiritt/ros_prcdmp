@@ -112,8 +112,8 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   dmp = dmpTemp;
   // initialize reference dmp object and rollout without use of coupling terms
   refDmp = dmpTemp;
-  std::vector<std::vector<double>> dummY, dummYY;
-  refDmp.rollout(refDmpTraj,dummY,dummYY,externalForce,tau, -1, 0);
+  std::vector<std::vector<double>> dummY;
+  refDmp.rollout(refDmpTraj,refDmpVel,dummY,externalForce,tau, -1, 0);
 
   DiscreteDMP dmpTemp2(dofs,dt,y0v,goalv,gainA,gainB);
   couplingDmp = dmpTemp2;
@@ -224,7 +224,7 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
   double omega = 0.0; 
   int it = 0;
   for (auto joint_handle : velocity_joint_handles_) {
-    omega = dq[it]; //refDmpTraj[iterateRef][it];//
+    omega = refDmpVel[iterateRef][it];//dq[it]; //
     joint_handle.setCommand(omega);
     it++;
   }

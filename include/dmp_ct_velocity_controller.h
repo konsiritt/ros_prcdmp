@@ -59,6 +59,8 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   DiscreteDMP refDmp;
   // reference dmp joint states without coupling term
   std::vector<std::vector<double>> refDmpTraj;
+  // reference dmp joint velocity states without coupling term
+  std::vector<std::vector<double>> refDmpVel;
   // iterator for reference step
   int iterateRef;
   // coupling term smoothing dmp
