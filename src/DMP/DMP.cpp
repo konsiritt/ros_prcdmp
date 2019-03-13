@@ -84,7 +84,7 @@ void DMP::rollout(std::vector<std::vector<double>> &yTrack, std::vector<std::vec
                   std::vector<double> externalForce, double tau, int timeSteps, double error )
 {
 
-    if (w.size()!=nDMPs)
+    if (w.size()<nDMPs) //TODO: this is temporary, should be w.size() == nDMPs
     {
         if (nBFs == 0) {
             doSimpleRollout = true;

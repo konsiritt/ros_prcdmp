@@ -23,7 +23,7 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   pubBatch = node_handle.advertise<common_msgs::SamplesBatch>("/prcdmp/episodic_batch", 1000);
 
   // subscriber that handles changes to the dmp coupling term: TODO: change to coupling term
-  subCoupling = node_handle.subscribe("/prcdmp/episodic_batch", 10, &DmpCtVelocityController::callback, this);
+  subCoupling = node_handle.subscribe("/coupling_term_estimator/coupling_term", 100, &DmpCtVelocityController::callback, this);
 
   velocity_joint_interface_ = robot_hardware->get<hardware_interface::VelocityJointInterface>();
   if (velocity_joint_interface_ == nullptr) {
@@ -224,7 +224,7 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
   double omega = 0.0; 
   int it = 0;
   for (auto joint_handle : velocity_joint_handles_) {
-    omega = refDmpTraj[iterateRef][it];//dq[it];
+    omega = dq[it]; //refDmpTraj[iterateRef][it];//
     joint_handle.setCommand(omega);
     it++;
   }
