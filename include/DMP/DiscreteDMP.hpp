@@ -45,6 +45,7 @@ public:
 //    std::vector<double> step( std::vector<double> &externalForce, double tau=1.0, double error=0.0);
 
 //    std::vector<double> simpleStep( std::vector<double> &externalForce, double tau=1.0, double error=0.0);
+    void writeTrajToText(const std::vector<std::vector<double>> &traj, std::string file_name);
 
 
 protected:

@@ -154,7 +154,8 @@ std::vector<double> DMP::step( std::vector<double> &externalForce, double tau, d
         acc = accumulate(&psi[0], psi.size() );
         f = x * in / acc;
 
-        this->ddy[i] = tau*tau*(gainA[i]* (gainB[i]*(goal[i]-this->y[i] -(goal[i] - y0[i])*x +f ) -this->dy[i]/tau) + couplingTerm[i]); //2009
+        this->ddy[i] = tau*tau*(gainA[i]* (gainB[i]*(goal[i]-this->y[i] -(goal[i] - y0[i])*x +f ) -this->dy[i]/tau)
+                                + couplingTerm[i]); //2009
 
         if(externalForce.size()==nDMPs)
         {

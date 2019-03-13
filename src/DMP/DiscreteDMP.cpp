@@ -75,3 +75,18 @@ void DiscreteDMP::genCenters()
         centers.push_back(exp(-cs.getGainA()*desCenters[i]));
     }
 }
+
+void DiscreteDMP::writeTrajToText(const std::vector<std::vector<double>> &traj, std::string file_name)
+{
+    std::ofstream myfile;
+    myfile.open(file_name);
+    for (int i = 0; i < traj.size(); i++)
+    {
+        for (int j = 0; j < traj[i].size(); j++)
+        {
+            myfile << traj[i][j] << ',' ;
+        }
+        myfile <<std::endl;
+    }
+    myfile.close();
+}

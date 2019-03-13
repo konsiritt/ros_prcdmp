@@ -115,6 +115,11 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   std::vector<std::vector<double>> dummY;
   refDmp.rollout(refDmpTraj,refDmpVel,dummY,externalForce,tau, -1, 0);
 
+  std::string tempPath = config.getTrajectoryPath()+std::string("refDmp.csv");
+  std::string tempPath2 = config.getTrajectoryPath()+std::string("refDmpV.csv");
+  refDmp.writeTrajToText(refDmpTraj,tempPath);
+  refDmp.writeTrajToText(refDmpVel,tempPath2);
+
   DiscreteDMP dmpTemp2(dofs,dt,y0v,goalv,gainA,gainB);
   couplingDmp = dmpTemp2;
 
