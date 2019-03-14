@@ -44,6 +44,7 @@ void DiscreteDMP::setFinalPosition (std::vector<double> &y_end)
   if (goal.size()==y_end.size()){
     this->goal = y_end;
     this->resettState();
+    this->checkOffset();
   }
   else {
     std::cerr<<"setFinalPosition: wrong vector size specified!"<<std::endl;

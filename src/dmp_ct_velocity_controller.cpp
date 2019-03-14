@@ -203,7 +203,7 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
   elapsed_time_ += period;
 
   //advance the coupling term
-  couplingDmp.step(externalForce, 100); //TODO: configure this parameter
+  couplingDmp.simpleStep(externalForce, 100); //TODO: configure this parameter
   couplingTerm = couplingDmp.getY();
   dmp.setCouplingTerm(couplingTerm);
   //advance the actual dmp
@@ -247,9 +247,9 @@ void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
 //TODO: adapt to react to a change of the coupling term as a topic
 void DmpCtVelocityController::callback(const common_msgs::CouplingTerm::ConstPtr& msg) {
   msgCoupling = *msg;
-  std::vector<double> temp(msg->data.begin(),msg->data.end());
-  couplingDmp.setFinalPosition(temp);
+  std::vector<double> temp(msg->data.begin(),msg->data.end());  
   couplingDmp.setInitialPosition(couplingTerm);
+  couplingDmp.setFinalPosition(temp);
 }
 
 void DmpCtVelocityController::addCurrMessage(){
