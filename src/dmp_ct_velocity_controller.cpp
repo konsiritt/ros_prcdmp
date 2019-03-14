@@ -120,8 +120,12 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   refDmp.writeTrajToText(refDmpTraj,tempPath);
   refDmp.writeTrajToText(refDmpVel,tempPath2);
 
-  DiscreteDMP dmpTemp2(dofs,dt,y0v,goalv,gainA,gainB);
+  std::vector<double> initCoupling(dofs, 0.0);
+  std::vector<double> goalCoupling(dofs, 0.0);
+  scaleCoupling = 10; // i.e. 10 steps of coulingDmp per dmp
+  DiscreteDMP dmpTemp2(dofs,dt/scaleCoupling,initCoupling,goalCoupling,gainA,gainB);
   couplingDmp = dmpTemp2;
+  
 
   // check for initial joint positions of the robot
   try {
@@ -203,7 +207,9 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
   elapsed_time_ += period;
 
   //advance the coupling term
-  couplingDmp.simpleStep(externalForce, 100); //TODO: configure this parameter
+  for (int i=0; i<scaleCoupling; ++i) {
+    couplingDmp.simpleStep(externalForce, 100); //TODO: configure this parameter
+  }
   couplingTerm = couplingDmp.getY();
   dmp.setCouplingTerm(couplingTerm);
   //advance the actual dmp
