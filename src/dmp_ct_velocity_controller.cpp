@@ -257,7 +257,10 @@ void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
 //TODO: adapt to react to a change of the coupling term as a topic
 void DmpCtVelocityController::callback(const common_msgs::CouplingTerm::ConstPtr& msg) {
   msgCoupling = *msg;
-  std::vector<double> temp(msg->data.begin(),msg->data.end());  
+  msgCoupling.header = msg->header;
+  msgCoupling.data = msg->data;
+  msgCoupling.msg_id = msg->msg_id;
+  std::vector<double> temp(msgCoupling.data.begin(),msgCoupling.data.end());
   couplingDmp.setInitialPosition(couplingTerm);
   couplingDmp.setFinalPosition(temp);
 
