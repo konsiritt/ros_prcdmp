@@ -206,6 +206,11 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
   couplingDmp.step(externalForce, 100); //TODO: configure this parameter
   couplingTerm = couplingDmp.getY();
   dmp.setCouplingTerm(couplingTerm);
+  std::cout<<"coupling term in update: of size: "<<couplingTerm.size()<< " with elements: ";
+  for (int i = 0; i< couplingTerm.size(); i++) {
+      std::cout<<couplingTerm[i]<<"; ";
+  }
+  std::cout<<std::endl;
   //advance the actual dmp
   std::vector<double> dq(q0.size(),0.0000001);
   dq = dmp.step(externalForce, tau);
@@ -248,6 +253,11 @@ void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
 void DmpCtVelocityController::callback(const common_msgs::CouplingTerm::ConstPtr& msg) {
   msgCoupling = *msg;
   std::vector<double> temp(msg->data.begin(),msg->data.end());
+  std::cout<<"coupling term callback: of size: "<<temp.size()<< " with elements: ";
+  for (int i = 0; i< temp.size(); i++) {
+      std::cout<<temp[i]<<"; ";
+  }
+  std::cout<<std::endl;
   couplingDmp.setFinalPosition(temp);
   couplingDmp.setInitialPosition(couplingTerm);
 }
