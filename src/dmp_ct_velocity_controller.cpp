@@ -126,6 +126,10 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   DiscreteDMP dmpTemp2(dofs,dt/scaleCoupling,initCoupling,goalCoupling,gainA,gainB);
   couplingDmp = dmpTemp2;
 
+  //set current coupling term to zero
+  std::vector<double> tempVec(q0.size(),0.0);
+  couplingTerm = tempVec;
+
   // check for initial joint positions of the robot
   try {
     auto state_handle = state_interface->getHandle("panda_robot");
@@ -165,6 +169,8 @@ void DmpCtVelocityController::starting(const ros::Time& /* time */) {
 
   //reset iterator for reference joint positions
   iterateRef = 0;
+
+  iterateCt = 0;
 
   //reset the message batch for reward information
   msgBatch.samples.clear();
@@ -211,11 +217,11 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
   }
   couplingTerm = couplingDmp.getY();
   dmp.setCouplingTerm(couplingTerm);
-  std::cout<<"coupling term in update: of size: "<<couplingTerm.size()<< " with elements: ";
-  for (int i = 0; i< couplingTerm.size(); i++) {
-      std::cout<<couplingTerm[i]<<"; ";
-  }
-  std::cout<<std::endl;
+//  std::cout<<"coupling term in update: of size: "<<couplingTerm.size()<< " with elements: ";
+//  for (int i = 0; i< couplingTerm.size(); i++) {
+//      std::cout<<couplingTerm[i]<<"; ";
+//  }
+//  std::cout<<std::endl;
   //advance the actual dmp
   std::vector<double> dq(q0.size(),0.0000001);
   dq = dmp.step(externalForce, tau);
@@ -256,6 +262,8 @@ void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
 
 //TODO: adapt to react to a change of the coupling term as a topic
 void DmpCtVelocityController::callback(const common_msgs::CouplingTerm::ConstPtr& msg) {
+  // reset counter that counts control cycles per ct
+  iterateCt = 0;
   msgCoupling = *msg;
   msgCoupling.header = msg->header;
   msgCoupling.data = msg->data;
@@ -264,14 +272,15 @@ void DmpCtVelocityController::callback(const common_msgs::CouplingTerm::ConstPtr
   couplingDmp.setInitialPosition(couplingTerm);
   couplingDmp.setFinalPosition(temp);
 
-std::cout<<"coupling term callback: of size: "<<temp.size()<< " with elements: ";
-  for (int i = 0; i< temp.size(); i++) {
-      std::cout<<temp[i]<<"; ";
-  }
-  std::cout<<std::endl;
+//  std::cout<<"coupling term callback: of size: "<<temp.size()<< " with elements: ";
+//  for (int i = 0; i< temp.size(); i++) {
+//      std::cout<<temp[i]<<"; ";
+//  }
+//  std::cout<<std::endl;
 }
 
 void DmpCtVelocityController::addCurrMessage(){
+    iterateCt++;
     common_msgs::MDPSample tempMsg;
     tempMsg.ct = msgCoupling;
     tempMsg.reward = 0;
@@ -283,6 +292,12 @@ void DmpCtVelocityController::addCurrMessage(){
     iterateRef++;
     tempMsg.q_offset = tempArray;
     msgBatch.samples.push_back(tempMsg);
+
+    std::cout<<"addCurrMessage, control cycles per ct: "<<iterateCt<<" with ct: ";
+    for (int i = 0; i< tempMsg.ct.data.size(); i++) {
+        std::cout<<tempMsg.ct.data[i]<<"; ";
+    }
+    std::cout<<std::endl;
 }
 
 }  // namespace prcdmp_node

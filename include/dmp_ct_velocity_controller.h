@@ -100,6 +100,9 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   // current CouplingTerm message received
   common_msgs::CouplingTerm msgCoupling;
 
+  // iterator for control cycles per ct message
+  int iterateCt;
+
   bool tempPublished  = false;
 };
 
