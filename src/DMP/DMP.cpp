@@ -75,7 +75,7 @@ void DMP::checkOffset()
     {
         if(y0[i]==goal[i])
         {
-            goal[i]+= 1e-4;
+            goal[i]+= 1e-3;
         }
     }
 }
@@ -172,10 +172,17 @@ std::vector<double> DMP::simpleStep( std::vector<double> &externalForce, double 
     double errorCoupling = 1.0/(1.0+error);
 
     double x    = cs.step(tau, errorCoupling);
+    //std::cout<<"step(): calculated x="<<x<<std::endl;
     if (x < endThreshold) {trajFinished = true;}
 
     for (int i=0; i<nDMPs; i++)
     {
+	//specifically for a constant function: goal and initial value are the same, to prevent small number errors
+	if (this->y[i] == goal[i]) 
+	{
+	    this->ddy[i] = 0;
+	    this->dy[i] = 0;	
+	}
         this->ddy[i] = tau*tau*(gainA[i]* (gainB[i]*(goal[i]-this->y[i] -(goal[i] - y0[i])*x ) -this->dy[i]/tau)); //2009
 
         if(externalForce.size()==nDMPs)
@@ -213,5 +220,6 @@ void DMP::setCouplingTerm(std::vector<double> &couplTerm)
     if (couplTerm.size()==nDMPs) {
         couplingTerm = couplTerm;
     }
+    //std::cout<<"setCouplingTerm: c[0]="<<couplingTerm[0]<<"c[1]="<<couplingTerm[1]<<"c[6]="<<couplingTerm[6]<<std::endl;
 }
 

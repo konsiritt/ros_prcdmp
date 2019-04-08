@@ -120,7 +120,10 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   refDmp.writeTrajToText(refDmpTraj,tempPath);
   refDmp.writeTrajToText(refDmpVel,tempPath2);
 
-  DiscreteDMP dmpTemp2(dofs,dt,y0v,goalv,gainA,gainB);
+  std::vector<double> initCoupling(dofs, 0.0);
+  std::vector<double> goalCoupling(dofs, 0.0);
+  scaleCoupling = 10; // i.e. 10 steps of coulingDmp per dmp
+  DiscreteDMP dmpTemp2(dofs,dt/scaleCoupling,initCoupling,goalCoupling,gainA,gainB);
   couplingDmp = dmpTemp2;
 
   // check for initial joint positions of the robot
@@ -203,7 +206,9 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
   elapsed_time_ += period;
 
   //advance the coupling term
-  couplingDmp.step(externalForce, 100); //TODO: configure this parameter
+  for (int i=0; i<scaleCoupling; ++i) {
+    couplingDmp.simpleStep(externalForce, 100); //TODO: configure this parameter
+  }
   couplingTerm = couplingDmp.getY();
   dmp.setCouplingTerm(couplingTerm);
   std::cout<<"coupling term in update: of size: "<<couplingTerm.size()<< " with elements: ";
@@ -252,14 +257,15 @@ void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
 //TODO: adapt to react to a change of the coupling term as a topic
 void DmpCtVelocityController::callback(const common_msgs::CouplingTerm::ConstPtr& msg) {
   msgCoupling = *msg;
-  std::vector<double> temp(msg->data.begin(),msg->data.end());
-  std::cout<<"coupling term callback: of size: "<<temp.size()<< " with elements: ";
+  std::vector<double> temp(msg->data.begin(),msg->data.end());  
+  couplingDmp.setInitialPosition(couplingTerm);
+  couplingDmp.setFinalPosition(temp);
+
+std::cout<<"coupling term callback: of size: "<<temp.size()<< " with elements: ";
   for (int i = 0; i< temp.size(); i++) {
       std::cout<<temp[i]<<"; ";
   }
   std::cout<<std::endl;
-  couplingDmp.setFinalPosition(temp);
-  couplingDmp.setInitialPosition(couplingTerm);
 }
 
 void DmpCtVelocityController::addCurrMessage(){

@@ -67,6 +67,9 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   DiscreteDMP couplingDmp;
   // time scaling factor: tau<1 -> slower execution
   double tau; 
+  // timestep scaling factor between coupling term dmp and regular dmp (avoids oscillations)
+  // i.e. the coupling term advances faster than the regular dmp
+  int scaleCoupling;
   std::vector<double> externalForce;
   // current coupling term per joint
   std::vector<double> couplingTerm;
@@ -84,13 +87,12 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   // flag wheter or not the target dmp is being executed
   bool executingDMP = false;
 
-  // dummy (for now) callback function reacting to boolean input
+  // callback function reacting to coupling term input
   void callback(const common_msgs::CouplingTerm::ConstPtr& msg);
   ros::Subscriber subCoupling;
 
   // publisher for execution status flag
   ros::Publisher pubExec;
-
   // publisher for reward batches
   ros::Publisher pubBatch;
   // samplesBatch message
