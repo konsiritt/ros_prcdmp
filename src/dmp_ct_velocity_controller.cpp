@@ -253,7 +253,7 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
     it++;
   }
   // add the current message for later publishing it
-  //addCurrMessage();
+  addCurrMessage();
 }
 
 void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
@@ -284,17 +284,17 @@ void DmpCtVelocityController::callback(const common_msgs::CouplingTerm::ConstPtr
 
 void DmpCtVelocityController::addCurrMessage(){
     iterateCt++;
-    common_msgs::MDPSample tempMsg;
-    tempMsg.ct = msgCoupling;
-    tempMsg.reward = 0;
-    tempMsg.mask = 0;
-    boost::array<double,7> tempArray = {0};
-    for (int i=0; i < qDmp.size(); ++i) {
-        tempArray[i] = refDmpTraj[iterateRef][i] - qDmp[i];
-    }
+//    common_msgs::MDPSample tempMsg;
+//    tempMsg.ct = msgCoupling;
+//    tempMsg.reward = 0;
+//    tempMsg.mask = 0;
+//    boost::array<double,7> tempArray = {0};
+//    for (int i=0; i < qDmp.size(); ++i) {
+//        tempArray[i] = refDmpTraj[iterateRef][i] - qDmp[i];
+//    }
     iterateRef++;
-    tempMsg.q_offset = tempArray;
-    msgBatch.samples.push_back(tempMsg);
+//    tempMsg.q_offset = tempArray;
+//    msgBatch.samples.push_back(tempMsg);
 
 //    std::cout<<"addCurrMessage, control cycles per ct: "<<iterateCt<<" with ct: ";
 //    for (int i = 0; i< tempMsg.ct.data.size(); i++) {
