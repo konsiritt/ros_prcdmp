@@ -211,7 +211,7 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
                                             const ros::Duration& period) {
   elapsed_time_ += period;
 
-  //advance the coupling term
+  //advance the coupling term, taking intermediate steps in order to allow faster dynamic
   for (int i=0; i<scaleCoupling; ++i) {
     couplingDmp.simpleStep(externalForce, 100); //TODO: configure this parameter
   }
@@ -246,6 +246,9 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
   int it = 0;
   for (auto joint_handle : velocity_joint_handles_) {
     omega = refDmpVel[iterateRef][it];//dq[it]; //
+    if (it == 6) {
+        omega = dq[it];
+    }
     joint_handle.setCommand(omega);
     it++;
   }
