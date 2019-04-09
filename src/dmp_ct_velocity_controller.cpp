@@ -253,7 +253,7 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
     it++;
   }
   // add the current message for later publishing it
-  addCurrMessage();
+  //addCurrMessage();
 }
 
 void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
