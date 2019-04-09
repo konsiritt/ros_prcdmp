@@ -296,11 +296,11 @@ void DmpCtVelocityController::addCurrMessage(){
     tempMsg.q_offset = tempArray;
     msgBatch.samples.push_back(tempMsg);
 
-    std::cout<<"addCurrMessage, control cycles per ct: "<<iterateCt<<" with ct: ";
-    for (int i = 0; i< tempMsg.ct.data.size(); i++) {
-        std::cout<<tempMsg.ct.data[i]<<"; ";
-    }
-    std::cout<<std::endl;
+//    std::cout<<"addCurrMessage, control cycles per ct: "<<iterateCt<<" with ct: ";
+//    for (int i = 0; i< tempMsg.ct.data.size(); i++) {
+//        std::cout<<tempMsg.ct.data[i]<<"; ";
+//    }
+//    std::cout<<std::endl;
 }
 
 }  // namespace prcdmp_node
