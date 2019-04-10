@@ -260,11 +260,14 @@ bool DmpCtVelocityController::loadDmpData(int &dofs, int &nBFs, double &dt, std:
     }
     //------convert arrays to vectors----------------------
     ROS_INFO("DmpCtVelocityController: converting arrays to vectors");
-    y0v.insert(y0v.begin(), q0.begin(), q0.end());
-    goalv.insert(y0v.begin(), goal.begin(), goal.end());
+    std::vector<double> y0vTemp(q0.begin(), q0.end());
+    std::vector<double> goalvTemp(goal.begin(), goal.end());
+    y0v = y0vTemp;
+    goalv = goalvTemp;
+//    y0v.insert(y0v.begin(), q0.begin(), q0.end());
+//    goalv.insert(y0v.begin(), goal.begin(), goal.end());
     ROS_INFO("DmpCtVelocityController: converted arrays to vectors");
-//    std::vector<double> y0v(q0.begin(), q0.end());
-//    std::vector<double> goalv(goal.begin(), goal.end());
+
 
     return true;
 }
