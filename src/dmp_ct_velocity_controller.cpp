@@ -36,10 +36,6 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
 
   initROSCommunication();
 
-  if (!node_handle.getParam("/franka_control/robot_ip", robotIp)) {
-    ROS_ERROR("Invalid or no robot_ip parameter provided");    
-    return 1;
-  }
   return true;
 }
 
@@ -207,6 +203,11 @@ bool DmpCtVelocityController::checkRobotSetup(){
       ROS_ERROR("DmpCtVelocityController: Could not get state interface from hardware");
       return false;
     }
+
+    if (!nodeHandle->getParam("/franka_control/robot_ip", robotIp)) {
+      ROS_ERROR("Invalid or no robot_ip parameter provided");
+      return false;
+    }
     return true;
 }
 
@@ -221,9 +222,7 @@ bool DmpCtVelocityController::loadDmpData(int &dofs, int &nBFs, double &dt, std:
     }
     //-------handles config file access----------------------
     std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/data/");
-    std::cout<<"DmpCtVelocityController: this is the package base path: "<<basePackagePath<<std::endl;
     Config config(datasetPath, basePackagePath);
-    std::cout<<"DmpCtVelocityController: config file has been created"<<std::endl;
     //------fill data from json to variables----------------------
     dofs = config.getDmpJson()["dofs"].asInt();
     std::cout<<"DmpCtVelocityController: DOFs: "<<dofs<<std::endl;
@@ -239,7 +238,7 @@ bool DmpCtVelocityController::loadDmpData(int &dofs, int &nBFs, double &dt, std:
     moveJsonArrayToVec(config.getDmpJson()["gain_b"], gainB);
     //------fill data from json to variables----------------------
     int episodeNr = config.getDataJson()["current_episode"].asInt()-1;
-    std::cout<<"DmpCtVelocityController: executing episode #"<<episodeNr<<std::endl;
+    ROS_INFO("DmpCtVelocityController: executing episode #%d",episodeNr);
     config.fillTrajectoryPath(episodeNr);
     if (episodeNr ==0) {
         UTILS::loadWeights(config.getInitialWPath(),w);

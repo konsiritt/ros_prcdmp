@@ -64,9 +64,7 @@ bool DmpStartVelocityController::init(hardware_interface::RobotHW* robot_hardwar
 
   // handles config file access
   std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/data/");
-  std::cout<<"DmpStartVelocityController: this is the package base path: "<<basePackagePath<<std::endl;
   Config config(datasetPath, basePackagePath);
-  std::cout<<"DmpStartVelocityController: config file has been created"<<std::endl;
 
   //fill data from json to variables
   int dofs = config.getDmpJson()["dofs"].asInt();

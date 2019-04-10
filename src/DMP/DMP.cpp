@@ -128,7 +128,7 @@ void DMP::rollout(std::vector<std::vector<double>> &yTrack, std::vector<std::vec
         dyTrack.push_back(dy);
         ddyTrack.push_back(ddy);
     }
-    std::cout<<maxDur<< "maximum duration is <----"<<std::endl;
+    //std::cout<<maxDur<< "maximum duration is <----"<<std::endl;
 }
 
 std::vector<double> DMP::step( std::vector<double> &externalForce, double tau, double error)
@@ -178,18 +178,22 @@ std::vector<double> DMP::simpleStep( std::vector<double> &externalForce, double 
     for (int i=0; i<nDMPs; i++)
     {
 	//specifically for a constant function: goal and initial value are the same, to prevent small number errors
-	if (this->y[i] == goal[i]) 
-	{
-	    this->ddy[i] = 0;
-	    this->dy[i] = 0;	
-	}
-        this->ddy[i] = tau*tau*(gainA[i]* (gainB[i]*(goal[i]-this->y[i] -(goal[i] - y0[i])*x ) -this->dy[i]/tau)); //2009
-
-        if(externalForce.size()==nDMPs)
+        if (this->y[i] == goal[i])
         {
-            this->ddy[i] += externalForce[i];
+            this->ddy[i] = 0;
+            this->dy[i] = 0;
         }
-        this->dy[i] += this->ddy[i]*dt*errorCoupling;
+        else
+        {
+            this->ddy[i] = tau*tau*(gainA[i]* (gainB[i]*(goal[i]-this->y[i] -(goal[i] - y0[i])*x ) -this->dy[i]/tau)); //2009
+
+            if(externalForce.size()==nDMPs)
+            {
+                this->ddy[i] += externalForce[i];
+            }
+            this->dy[i] += this->ddy[i]*dt*errorCoupling;
+        }
+
         this->y[i]  += this->dy[i]*dt*errorCoupling;
     }
     return this->dy;
