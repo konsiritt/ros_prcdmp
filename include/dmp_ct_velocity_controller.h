@@ -42,13 +42,16 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
  private:
   // add the message information to the reward batch
   void addCurrMessage();
-  // load dmp data from file
-  bool loadDmpData(int &dofs, int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
-                   std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB);
 
   void initROSCommunication();
 
   bool checkRobotSetup();
+
+  bool loadDmpData(int &dofs, int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
+                   std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB);
+
+  void initDmpObjects(int &dofs, int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
+                      std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB);
 
   hardware_interface::VelocityJointInterface* velocity_joint_interface_;
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
@@ -62,8 +65,6 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
 
   // dmp class
   DiscreteDMP dmp;
-  // reference dmp without coupling term
-  DiscreteDMP refDmp;
   // reference dmp joint states without coupling term
   std::vector<std::vector<double>> refDmpTraj;
   // reference dmp joint velocity states without coupling term

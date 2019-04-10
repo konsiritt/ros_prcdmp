@@ -18,25 +18,19 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   robotHardware = robot_hardware;
   nodeHandle = &node_handle;
 
-  initROSCommunication();
-
   if (!checkRobotSetup()) {return false;}
 
+ //----------------------load DMP specific config data from files----------------------
   int dofs, nBFs;
   double dt;
   std::vector<double> initialPosition, goalPosition, gainA, gainB;
   std::vector<std::vector<double>> weights ;
   loadDmpData(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
-  ROS_INFO("DmpCtVelocityController: successfully loaded DMP data from file");
 
   //----------------------initialize dmp runtime object----------------------
-  DiscreteDMP dmpTemp(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
-  dmp = dmpTemp;
-  // initialize reference dmp object and rollout without use of coupling terms
-  refDmp = dmpTemp;
-  std::vector<std::vector<double>> dummY;
-  refDmp.rollout(refDmpTraj,refDmpVel,dummY,externalForce,tau, -1, 0);
+  initDmpObjects(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
 
+  initROSCommunication();
   std::vector<double> initCoupling(dofs, 0.0);
   std::vector<double> goalCoupling(dofs, 0.0);
   scaleCoupling = 10; // i.e. 10 steps of coulingDmp per dmp step
@@ -47,7 +41,7 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   std::vector<double> tempVec(q0.size(),0.0);
   couplingTerm = tempVec;
 
-  ROS_INFO("DmpCtVelocityController: successfully setup DMP objects");
+  ROS_INFO("DmpCtVelocityController: setup DMP objects");
 
   auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
   // check for initial joint positions of the robot
@@ -221,57 +215,6 @@ void DmpCtVelocityController::addCurrMessage(){
 //    std::cout<<std::endl;
 }
 
-bool DmpCtVelocityController::loadDmpData(int &dofs, int &nBFs, double &dt, std::vector<double> &y0v,
-                                          std::vector<double> &goalv, std::vector<std::vector<double> > &w,
-                                          std::vector<double> &gainA, std::vector<double> &gainB) {
-    //----------------------load DMP specific config data from files----------------------
-    std::string datasetPath;
-    if (!nodeHandle->getParam("/dmp_velocity_controller/data_set", datasetPath)) {
-      ROS_ERROR("DmpCtVelocityController: Invalid or no data_set parameter provided; provide e.g. data_set:=set1");
-      return false;
-    }
-    //-------handles config file access----------------------
-    std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/data/");
-    std::cout<<"DmpCtVelocityController: this is the package base path: "<<basePackagePath<<std::endl;
-    Config config(datasetPath, basePackagePath);
-    std::cout<<"DmpCtVelocityController: config file has been created"<<std::endl;
-    //------fill data from json to variables----------------------
-    dofs = config.getDmpJson()["dofs"].asInt();
-    std::cout<<"DmpCtVelocityController: DOFs: "<<dofs<<std::endl;
-    nBFs = config.getDmpJson()["n_basis"].asInt();
-    dt = config.getDmpJson()["dt"].asDouble();
-    double timeSpan = config.getDmpJson()["timespan"].asDouble();
-    tau = 1.0/timeSpan;
-    //------initialize arrays from config file----------------------
-    std::array<double,7> goal;
-    moveJsonArrayToVec(config.getDmpJson()["q0"], q0);
-    moveJsonArrayToVec(config.getDmpJson()["goal"], goal);
-    moveJsonArrayToVec(config.getDmpJson()["gain_a"], gainA);
-    moveJsonArrayToVec(config.getDmpJson()["gain_b"], gainB);
-    //------fill data from json to variables----------------------
-    int episodeNr = config.getDataJson()["current_episode"].asInt()-1;
-    std::cout<<"DmpCtVelocityController: executing episode #"<<episodeNr<<std::endl;
-    config.fillTrajectoryPath(episodeNr);
-    if (episodeNr ==0) {
-        UTILS::loadWeights(config.getInitialWPath(),w);
-    }
-    else {
-        UTILS::loadWeights(config.getwPath(),w);
-    }
-    //------convert arrays to vectors----------------------
-    ROS_INFO("DmpCtVelocityController: converting arrays to vectors");
-    std::vector<double> y0vTemp(q0.begin(), q0.end());
-    std::vector<double> goalvTemp(goal.begin(), goal.end());
-    y0v = y0vTemp;
-    goalv = goalvTemp;
-//    y0v.insert(y0v.begin(), q0.begin(), q0.end());
-//    goalv.insert(y0v.begin(), goal.begin(), goal.end());
-    ROS_INFO("DmpCtVelocityController: converted arrays to vectors");
-
-
-    return true;
-}
-
 void DmpCtVelocityController::initROSCommunication(){
     //----------------------initialize the publishing nodes----------------------
     pubExec = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_exec", 1000);
@@ -316,6 +259,61 @@ bool DmpCtVelocityController::checkRobotSetup(){
     return true;
 }
 
+bool DmpCtVelocityController::loadDmpData(int &dofs, int &nBFs, double &dt, std::vector<double> &y0v,
+                                          std::vector<double> &goalv, std::vector<std::vector<double> > &w,
+                                          std::vector<double> &gainA, std::vector<double> &gainB) {
+    //----------------------load DMP specific config data from files----------------------
+    std::string datasetPath;
+    if (!nodeHandle->getParam("/dmp_velocity_controller/data_set", datasetPath)) {
+      ROS_ERROR("DmpCtVelocityController: Invalid or no data_set parameter provided; provide e.g. data_set:=set1");
+      return false;
+    }
+    //-------handles config file access----------------------
+    std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/data/");
+    std::cout<<"DmpCtVelocityController: this is the package base path: "<<basePackagePath<<std::endl;
+    Config config(datasetPath, basePackagePath);
+    std::cout<<"DmpCtVelocityController: config file has been created"<<std::endl;
+    //------fill data from json to variables----------------------
+    dofs = config.getDmpJson()["dofs"].asInt();
+    std::cout<<"DmpCtVelocityController: DOFs: "<<dofs<<std::endl;
+    nBFs = config.getDmpJson()["n_basis"].asInt();
+    dt = config.getDmpJson()["dt"].asDouble();
+    double timeSpan = config.getDmpJson()["timespan"].asDouble();
+    tau = 1.0/timeSpan;
+    //------initialize arrays from config file----------------------
+    std::array<double,7> goal;
+    moveJsonArrayToVec(config.getDmpJson()["q0"], q0);
+    moveJsonArrayToVec(config.getDmpJson()["goal"], goal);
+    moveJsonArrayToVec(config.getDmpJson()["gain_a"], gainA);
+    moveJsonArrayToVec(config.getDmpJson()["gain_b"], gainB);
+    //------fill data from json to variables----------------------
+    int episodeNr = config.getDataJson()["current_episode"].asInt()-1;
+    std::cout<<"DmpCtVelocityController: executing episode #"<<episodeNr<<std::endl;
+    config.fillTrajectoryPath(episodeNr);
+    if (episodeNr ==0) {
+        UTILS::loadWeights(config.getInitialWPath(),w);
+    }
+    else {
+        UTILS::loadWeights(config.getwPath(),w);
+    }
+    //------convert arrays to vectors----------------------
+    std::vector<double> y0vTemp(q0.begin(), q0.end());
+    std::vector<double> goalvTemp(goal.begin(), goal.end());
+    y0v = y0vTemp;
+    goalv = goalvTemp;
+
+    return true;
+}
+
+void DmpCtVelocityController::initDmpObjects(int &dofs, int &nBFs, double &dt, std::vector<double> &initialPosition,
+                                          std::vector<double> &goalPosition, std::vector<std::vector<double> > &weights,
+                                          std::vector<double> &gainA, std::vector<double> &gainB) {
+    DiscreteDMP dmpTemp(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
+    dmp = dmpTemp;
+    std::vector<std::vector<double>> dummY;
+    dmp.rollout(refDmpTraj,refDmpVel,dummY,externalForce,tau, -1, 0);
+    dmp.resettState();
+}
 
 }  // namespace prcdmp_node
 
