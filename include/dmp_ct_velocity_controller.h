@@ -42,6 +42,13 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
  private:
   // add the message information to the reward batch
   void addCurrMessage();
+  // load dmp data from file
+  bool loadDmpData(int &dofs, int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
+                   std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB);
+
+  void initROSCommunication();
+
+  bool checkRobotSetup();
 
   hardware_interface::VelocityJointInterface* velocity_joint_interface_;
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
@@ -88,7 +95,7 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   bool executingDMP = false;
 
   // callback function reacting to coupling term input
-  void callback(const common_msgs::CouplingTerm::ConstPtr& msg);
+  void ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg);
   ros::Subscriber subCoupling;
 
   // publisher for execution status flag
@@ -100,10 +107,7 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   // current CouplingTerm message received
   common_msgs::CouplingTerm msgCoupling;
 
-  // iterator for control cycles per ct message
-  int iterateCt;
-
-  bool tempPublished  = false;
+  bool flagPubEx  = false;
 };
 
 }  // namespace prcdmp_node

@@ -18,111 +18,27 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   robotHardware = robot_hardware;
   nodeHandle = &node_handle;
 
-  pubExec = node_handle.advertise<std_msgs::Bool>("/prcdmp/flag_exec", 1000);
+  initROSCommunication();
 
-  pubBatch = node_handle.advertise<common_msgs::SamplesBatch>("/prcdmp/episodic_batch", 1000);
+  if (!checkRobotSetup()) {return false;}
 
-  // subscriber that handles changes to the dmp coupling term: TODO: change to coupling term
-  subCoupling = node_handle.subscribe("/coupling_term_estimator/coupling_term", 100, &DmpCtVelocityController::callback, this);
+  int dofs, nBFs;
+  double dt;
+  std::vector<double> initialPosition, goalPosition, gainA, gainB;
+  std::vector<std::vector<double>> weights ;
+  loadDmpData(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
 
-  velocity_joint_interface_ = robot_hardware->get<hardware_interface::VelocityJointInterface>();
-  if (velocity_joint_interface_ == nullptr) {
-    ROS_ERROR(
-        "DmpCtVelocityController: Error getting velocity joint interface from hardware!");
-    return false;
-  }
-  std::vector<std::string> joint_names;
-  if (!node_handle.getParam("joint_names", joint_names)) {
-    ROS_ERROR("DmpCtVelocityController: Could not parse joint names");
-  }
-  if (joint_names.size() != 7) {
-    ROS_ERROR_STREAM("DmpCtVelocityController: Wrong number of joint names, got "
-                     << joint_names.size() << " instead of 7 names!");
-    return false;
-  }
-  velocity_joint_handles_.resize(7);
-  for (size_t i = 0; i < 7; ++i) {
-    try {
-      velocity_joint_handles_[i] = velocity_joint_interface_->getHandle(joint_names[i]);
-    } catch (const hardware_interface::HardwareInterfaceException& ex) {
-      ROS_ERROR_STREAM(
-          "DmpCtVelocityController: Exception getting joint handles: " << ex.what());
-      return false;
-    }
-  }
-
-  auto state_interface = robot_hardware->get<franka_hw::FrankaStateInterface>();
-  if (state_interface == nullptr) {
-    ROS_ERROR("DmpCtVelocityController: Could not get state interface from hardware");
-    return false;
-  }
-
-
-  std::string datasetPath;
-  if (!node_handle.getParam("/dmp_velocity_controller/data_set", datasetPath)) {
-    ROS_ERROR("DmpCtVelocityController: Invalid or no data_set parameter provided; provide e.g. data_set:=set1");
-    return 1;
-  }
-
-  /// load DMP specific config data from files
-
-  // handles config file access
-  std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/data/");
-  std::cout<<"DmpCtVelocityController: this is the package base path: "<<basePackagePath<<std::endl;
-  Config config(datasetPath, basePackagePath);
-  std::cout<<"DmpCtVelocityController: config file has been created"<<std::endl;
-
-  //fill data from json to variables
-  int dofs = config.getDmpJson()["dofs"].asInt();
-  std::cout<<"DmpCtVelocityController: DOFs: "<<dofs<<std::endl;
-  int nBFs = config.getDmpJson()["n_basis"].asInt();
-  double dt = config.getDmpJson()["dt"].asDouble();
-  double timeSpan = config.getDmpJson()["timespan"].asDouble();
-  tau = 1.0/timeSpan;
-
-  // initialize arrays from config file
-  std::array<double,7> goal;
-  std::vector<double> gainA, gainB;
-  moveJsonArrayToVec(config.getDmpJson()["q0"], q0);
-  moveJsonArrayToVec(config.getDmpJson()["goal"], goal);
-  moveJsonArrayToVec(config.getDmpJson()["gain_a"], gainA);
-  moveJsonArrayToVec(config.getDmpJson()["gain_b"], gainB);
-
-  //fill data from json to variables
-
-  int episodeNr = config.getDataJson()["current_episode"].asInt()-1;
-  std::cout<<"DmpCtVelocityController: executing episode #"<<episodeNr<<std::endl;
-  config.fillTrajectoryPath(episodeNr);
-
-  std::vector<double> externalForce;
-  std::vector<std::vector<double>> w ;
-  if (episodeNr ==0) {
-      UTILS::loadWeights(config.getInitialWPath(),w);
-  }
-  else {
-      UTILS::loadWeights(config.getwPath(),w);
-  }
-
-  // convert arrays to vectors
-  std::vector<double> y0v(q0.begin(), q0.end());
-  std::vector<double> goalv(goal.begin(), goal.end());
-
-  // initialize dmp runtime object
-  DiscreteDMP dmpTemp(dofs, nBFs, dt, y0v, goalv, w, gainA, gainB);
+  //----------------------initialize dmp runtime object----------------------
+  DiscreteDMP dmpTemp(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
   dmp = dmpTemp;
   // initialize reference dmp object and rollout without use of coupling terms
   refDmp = dmpTemp;
   std::vector<std::vector<double>> dummY;
   refDmp.rollout(refDmpTraj,refDmpVel,dummY,externalForce,tau, -1, 0);
 
-  std::string tempPath = config.getTrajectoryPath()+std::string("refDmp.csv");
-  std::string tempPath2 = config.getTrajectoryPath()+std::string("refDmpV.csv");
-  refDmp.writeTrajToText(refDmpTraj,tempPath);
-  refDmp.writeTrajToText(refDmpVel,tempPath2);
-
   std::vector<double> initCoupling(dofs, 0.0);
   std::vector<double> goalCoupling(dofs, 0.0);
-  scaleCoupling = 10; // i.e. 10 steps of coulingDmp per dmp
+  scaleCoupling = 10; // i.e. 10 steps of coulingDmp per dmp step
   DiscreteDMP dmpTemp2(dofs,dt/scaleCoupling,initCoupling,goalCoupling,gainA,gainB);
   couplingDmp = dmpTemp2;
 
@@ -130,6 +46,7 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   std::vector<double> tempVec(q0.size(),0.0);
   couplingTerm = tempVec;
 
+  auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
   // check for initial joint positions of the robot
   try {
     auto state_handle = state_interface->getHandle("panda_robot");
@@ -170,14 +87,12 @@ void DmpCtVelocityController::starting(const ros::Time& /* time */) {
   //reset iterator for reference joint positions
   iterateRef = 0;
 
-  iterateCt = 0;
-
   //reset the message batch for reward information
   msgBatch.samples.clear();
 
   //assume initialization
   notInitializedDMP = false;
-  tempPublished = false;
+  flagPubEx = false;
 
   //set current coupling term to zero
   std::vector<double> tempVec(q0.size(),0.0);
@@ -233,12 +148,12 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
     executingDMP = false;
 
     //publish the changed states to a topic so that the controller_manager can switch controllers
-    if (!tempPublished) {
+    if (!flagPubEx) {
       std::cout<<"DmpCtVelocityController: finished the target trajectory after time[s]: "<< elapsed_time_<<std::endl;
       std_msgs::Bool msg;
       msg.data = executingDMP;
       pubExec.publish(msg);
-      tempPublished = true;
+      flagPubEx = true;
     }
   }
 
@@ -265,9 +180,8 @@ void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
 }
 
 //TODO: adapt to react to a change of the coupling term as a topic
-void DmpCtVelocityController::callback(const common_msgs::CouplingTerm::ConstPtr& msg) {
+void DmpCtVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
   // reset counter that counts control cycles per ct
-  iterateCt = 0;
   msgCoupling = *msg;
   msgCoupling.header = msg->header;
   msgCoupling.data = msg->data;
@@ -284,7 +198,6 @@ void DmpCtVelocityController::callback(const common_msgs::CouplingTerm::ConstPtr
 }
 
 void DmpCtVelocityController::addCurrMessage(){
-    iterateCt++;
     common_msgs::MDPSample tempMsg;
     tempMsg.ct = msgCoupling;
     tempMsg.reward = 0;
@@ -303,6 +216,97 @@ void DmpCtVelocityController::addCurrMessage(){
 //    }
 //    std::cout<<std::endl;
 }
+
+bool DmpCtVelocityController::loadDmpData(int &dofs, int &nBFs, double &dt, std::vector<double> &y0v,
+                                          std::vector<double> &goalv, std::vector<std::vector<double> > &w,
+                                          std::vector<double> &gainA, std::vector<double> &gainB) {
+    //----------------------load DMP specific config data from files----------------------
+    std::string datasetPath;
+    if (!nodeHandle->getParam("/dmp_velocity_controller/data_set", datasetPath)) {
+      ROS_ERROR("DmpCtVelocityController: Invalid or no data_set parameter provided; provide e.g. data_set:=set1");
+      return false;
+    }
+    //-------handles config file access----------------------
+    std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/data/");
+    std::cout<<"DmpCtVelocityController: this is the package base path: "<<basePackagePath<<std::endl;
+    Config config(datasetPath, basePackagePath);
+    std::cout<<"DmpCtVelocityController: config file has been created"<<std::endl;
+    //------fill data from json to variables----------------------
+    dofs = config.getDmpJson()["dofs"].asInt();
+    std::cout<<"DmpCtVelocityController: DOFs: "<<dofs<<std::endl;
+    nBFs = config.getDmpJson()["n_basis"].asInt();
+    dt = config.getDmpJson()["dt"].asDouble();
+    double timeSpan = config.getDmpJson()["timespan"].asDouble();
+    tau = 1.0/timeSpan;
+    //------initialize arrays from config file----------------------
+    std::array<double,7> goal;
+    moveJsonArrayToVec(config.getDmpJson()["q0"], q0);
+    moveJsonArrayToVec(config.getDmpJson()["goal"], goal);
+    moveJsonArrayToVec(config.getDmpJson()["gain_a"], gainA);
+    moveJsonArrayToVec(config.getDmpJson()["gain_b"], gainB);
+    //------fill data from json to variables----------------------
+    int episodeNr = config.getDataJson()["current_episode"].asInt()-1;
+    std::cout<<"DmpCtVelocityController: executing episode #"<<episodeNr<<std::endl;
+    config.fillTrajectoryPath(episodeNr);
+    if (episodeNr ==0) {
+        UTILS::loadWeights(config.getInitialWPath(),w);
+    }
+    else {
+        UTILS::loadWeights(config.getwPath(),w);
+    }
+    //------convert arrays to vectors----------------------
+    y0v.insert(y0v.begin(), q0.begin(), q0.end());
+    goalv.insert(y0v.begin(), goal.begin(), goal.end());
+//    std::vector<double> y0v(q0.begin(), q0.end());
+//    std::vector<double> goalv(goal.begin(), goal.end());
+
+    return true;
+}
+
+void DmpCtVelocityController::initROSCommunication(){
+    //----------------------initialize the publishing nodes----------------------
+    pubExec = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_exec", 1000);
+    pubBatch = nodeHandle->advertise<common_msgs::SamplesBatch>("/prcdmp/episodic_batch", 1000);
+
+    //----------------------subscriber that handles changes to the dmp coupling term----------------------
+    subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 100, &DmpCtVelocityController::ctCallback, this);
+}
+
+bool DmpCtVelocityController::checkRobotSetup(){
+    //----------------------do some robot hardware initializing work----------------------
+    velocity_joint_interface_ = robotHardware->get<hardware_interface::VelocityJointInterface>();
+    if (velocity_joint_interface_ == nullptr) {
+      ROS_ERROR(
+          "DmpCtVelocityController: Error getting velocity joint interface from hardware!");
+      return false;
+    }
+    std::vector<std::string> joint_names;
+    if (!nodeHandle->getParam("joint_names", joint_names)) {
+      ROS_ERROR("DmpCtVelocityController: Could not parse joint names");
+    }
+    if (joint_names.size() != 7) {
+      ROS_ERROR_STREAM("DmpCtVelocityController: Wrong number of joint names, got "
+                       << joint_names.size() << " instead of 7 names!");
+      return false;
+    }
+    velocity_joint_handles_.resize(7);
+    for (size_t i = 0; i < 7; ++i) {
+      try {
+        velocity_joint_handles_[i] = velocity_joint_interface_->getHandle(joint_names[i]);
+      } catch (const hardware_interface::HardwareInterfaceException& ex) {
+        ROS_ERROR_STREAM(
+            "DmpCtVelocityController: Exception getting joint handles: " << ex.what());
+        return false;
+      }
+    }
+    auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
+    if (state_interface == nullptr) {
+      ROS_ERROR("DmpCtVelocityController: Could not get state interface from hardware");
+      return false;
+    }
+    return true;
+}
+
 
 }  // namespace prcdmp_node
 
