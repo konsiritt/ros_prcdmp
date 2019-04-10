@@ -55,9 +55,15 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
 
   void initCouplingObject (int &dofs, double &dt, std::vector<double> &gainA, std::vector<double> &gainB);
 
+  void advanceCouplingTerm();
+
+  void checkStoppingCondition();
+
+  void commandRobot(const std::vector<double> &dq);
+
   hardware_interface::VelocityJointInterface* velocity_joint_interface_;
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
-  ros::Duration elapsed_time_;
+  ros::Duration elapsedTime;
 
   // handle for robot hardware (not sure if safe?)
   hardware_interface::RobotHW* robotHardware;
@@ -80,6 +86,8 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   // timestep scaling factor between coupling term dmp and regular dmp (avoids oscillations)
   // i.e. the coupling term advances faster than the regular dmp
   int scaleCoupling;
+  // time at which the coupling term interpolation reaches goal
+  double timeCouplingFinal;
   std::vector<double> externalForce;
   // current coupling term per joint
   std::vector<double> couplingTerm;
@@ -91,9 +99,6 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   // initial joint position of the robot
   std::array<double,7> qInit;
   std::string robotIp;
-
-  // flag wheter or not the target dmp is being executed
-  bool executingDMP = false;
 
   // callback function reacting to coupling term input
   void ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg);

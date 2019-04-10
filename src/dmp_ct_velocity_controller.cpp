@@ -41,7 +41,7 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
 
 
 void DmpCtVelocityController::starting(const ros::Time& /* time */) {
-  std::cout<<"DmpCtVelocityController: starting()"<<std::endl;
+  ROS_INFO("DmpCtVelocityController: starting");
   // initialize the dmp trajectory (resetting the canonical sytem)
   dmp.resettState(); 
   couplingDmp.resettState();
@@ -64,55 +64,29 @@ void DmpCtVelocityController::starting(const ros::Time& /* time */) {
     ROS_ERROR("DmpCtVelocityController: Could not get state interface from hardware when starting the controller");
   }
 
-  elapsed_time_ = ros::Duration(0.0);
+  elapsedTime = ros::Duration(0.0);
 }
 
 void DmpCtVelocityController::update(const ros::Time& /* time */,
                                             const ros::Duration& period) {
-  elapsed_time_ += period;
+  elapsedTime += period;
 
-  //advance the coupling term, taking intermediate steps in order to allow faster dynamic
-  for (int i=0; i<scaleCoupling; ++i) {
-    couplingDmp.simpleStep(externalForce, 100); //TODO: configure this parameter
-  }
-  couplingTerm = couplingDmp.getY();
-  dmp.setCouplingTerm(couplingTerm);
-//  std::cout<<"coupling term in update: of size: "<<couplingTerm.size()<< " with elements: ";
-//  for (int i = 0; i< couplingTerm.size(); i++) {
-//      std::cout<<couplingTerm[i]<<"; ";
-//  }
-//  std::cout<<std::endl;
+  ROS_INFO("advancing coupling term");
+  advanceCouplingTerm();
+
+  ROS_INFO("advancing dmp");
   //advance the actual dmp
   std::vector<double> dq(q0.size(),0.0000001);
   dq = dmp.step(externalForce, tau);
   qDmp = dmp.getY();
 
-  //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
-  if (dmp.getTrajFinished()) {
-    // done executing the dmp
-    executingDMP = false;
+  ROS_INFO("checking stopping condition");
+  checkStoppingCondition();
 
-    //publish the changed states to a topic so that the controller_manager can switch controllers
-    if (!flagPubEx) {
-      std::cout<<"DmpCtVelocityController: finished the target trajectory after time[s]: "<< elapsed_time_<<std::endl;
-      std_msgs::Bool msg;
-      msg.data = executingDMP;
-      pubExec.publish(msg);
-      flagPubEx = true;
-    }
-  }
+  ROS_INFO("apply command to robot");
+  commandRobot(dq);
 
-  double omega = 0.0; 
-  int it = 0;
-  for (auto joint_handle : velocity_joint_handles_) {
-    omega = refDmpVel[iterateRef][it];//dq[it]; //
-    if (it == 6) {
-        omega = dq[it];
-    }
-    joint_handle.setCommand(omega);
-    it++;
-  }
-  // add the current message for later publishing it
+  ROS_INFO("add the current message for later publishing it");
   addCurrMessage();
 }
 
@@ -134,12 +108,6 @@ void DmpCtVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstP
   std::vector<double> temp(msgCoupling.data.begin(),msgCoupling.data.end());
   couplingDmp.setInitialPosition(couplingTerm);
   couplingDmp.setFinalPosition(temp);
-
-//  std::cout<<"coupling term callback: of size: "<<temp.size()<< " with elements: ";
-//  for (int i = 0; i< temp.size(); i++) {
-//      std::cout<<temp[i]<<"; ";
-//  }
-//  std::cout<<std::endl;
 }
 
 void DmpCtVelocityController::addCurrMessage(){
@@ -154,12 +122,6 @@ void DmpCtVelocityController::addCurrMessage(){
     iterateRef++;
     tempMsg.q_offset = tempArray;
     msgBatch.samples.push_back(tempMsg);
-
-//    std::cout<<"addCurrMessage, control cycles per ct: "<<iterateCt<<" with ct: ";
-//    for (int i = 0; i< tempMsg.ct.data.size(); i++) {
-//        std::cout<<tempMsg.ct.data[i]<<"; ";
-//    }
-//    std::cout<<std::endl;
 }
 
 void DmpCtVelocityController::initROSCommunication(){
@@ -270,6 +232,7 @@ void DmpCtVelocityController::initCouplingObject (int &dofs, double &dt, std::ve
     std::vector<double> initCoupling(dofs, 0.0);
     std::vector<double> goalCoupling(dofs, 0.0);
     scaleCoupling = 10; // i.e. 10 steps of coulingDmp per dmp step
+    timeCouplingFinal = 0.003; // [ms] until final value is 99% reached
     DiscreteDMP dmpTemp2(dofs,dt/scaleCoupling,initCoupling,goalCoupling,gainA,gainB);
     couplingDmp = dmpTemp2;
 
@@ -277,6 +240,43 @@ void DmpCtVelocityController::initCouplingObject (int &dofs, double &dt, std::ve
     std::vector<double> tempVec(q0.size(),0.0);
     couplingTerm = tempVec;
 }
+
+void DmpCtVelocityController::advanceCouplingTerm(){
+    //taking intermediate steps in order to allow faster dynamic
+    for (int i=0; i<scaleCoupling; ++i) {
+      couplingDmp.simpleStep(externalForce, 1/timeCouplingFinal/scaleCoupling); // 1/timeCouplingFinal/scaleCoupling : final value should be achieved at timeCouplingFinal
+    }
+    couplingTerm = couplingDmp.getY();
+    dmp.setCouplingTerm(couplingTerm);
+}
+
+void DmpCtVelocityController::checkStoppingCondition(){
+    //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
+    if (dmp.getTrajFinished()) {
+      //publish the changed states to a topic so that the controller_manager can switch controllers
+      if (!flagPubEx) {
+        ROS_INFO("DmpCtVelocityController: finished the target trajectory after time[s]: [%f]", elapsedTime);
+        std_msgs::Bool msg;
+        msg.data = false;
+        pubExec.publish(msg);
+        flagPubEx = true;
+      }
+    }
+}
+
+void DmpCtVelocityController::commandRobot(const std::vector<double> &dq){
+    double omega = 0.0;
+    int it = 0;
+    for (auto joint_handle : velocity_joint_handles_) {
+      omega = refDmpVel[iterateRef][it];//dq[it]; //
+      if (it == 6) {
+          omega = dq[it];
+      }
+      joint_handle.setCommand(omega);
+      it++;
+    }
+}
+
 
 }  // namespace prcdmp_node
 
