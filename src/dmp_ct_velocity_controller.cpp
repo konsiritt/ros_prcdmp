@@ -27,6 +27,7 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   std::vector<double> initialPosition, goalPosition, gainA, gainB;
   std::vector<std::vector<double>> weights ;
   loadDmpData(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
+  ROS_INFO("DmpCtVelocityController: successfully loaded DMP data from file");
 
   //----------------------initialize dmp runtime object----------------------
   DiscreteDMP dmpTemp(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
@@ -46,8 +47,11 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   std::vector<double> tempVec(q0.size(),0.0);
   couplingTerm = tempVec;
 
+  ROS_INFO("DmpCtVelocityController: successfully setup DMP objects");
+
   auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
   // check for initial joint positions of the robot
+  ROS_INFO("DmpCtVelocityController: checking for initial joint positions of the robot");
   try {
     auto state_handle = state_interface->getHandle("panda_robot");
 
@@ -255,8 +259,10 @@ bool DmpCtVelocityController::loadDmpData(int &dofs, int &nBFs, double &dt, std:
         UTILS::loadWeights(config.getwPath(),w);
     }
     //------convert arrays to vectors----------------------
+    ROS_INFO("DmpCtVelocityController: converting arrays to vectors");
     y0v.insert(y0v.begin(), q0.begin(), q0.end());
     goalv.insert(y0v.begin(), goal.begin(), goal.end());
+    ROS_INFO("DmpCtVelocityController: converted arrays to vectors");
 //    std::vector<double> y0v(q0.begin(), q0.end());
 //    std::vector<double> goalv(goal.begin(), goal.end());
 
