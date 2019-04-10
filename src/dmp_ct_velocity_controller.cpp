@@ -71,22 +71,17 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
                                             const ros::Duration& period) {
   elapsedTime += period;
 
-  ROS_INFO("advancing coupling term");
   advanceCouplingTerm();
 
-  ROS_INFO("advancing dmp");
   //advance the actual dmp
   std::vector<double> dq(q0.size(),0.0000001);
   dq = dmp.step(externalForce, tau);
   qDmp = dmp.getY();
 
-  ROS_INFO("checking stopping condition");
   checkStoppingCondition();
 
-  ROS_INFO("apply command to robot");
   commandRobot(dq);
 
-  ROS_INFO("add the current message for later publishing it");
   addCurrMessage();
 }
 
