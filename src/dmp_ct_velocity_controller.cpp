@@ -30,43 +30,11 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   //----------------------initialize dmp runtime object----------------------
   initDmpObjects(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
 
-  initROSCommunication();
-  std::vector<double> initCoupling(dofs, 0.0);
-  std::vector<double> goalCoupling(dofs, 0.0);
-  scaleCoupling = 10; // i.e. 10 steps of coulingDmp per dmp step
-  DiscreteDMP dmpTemp2(dofs,dt/scaleCoupling,initCoupling,goalCoupling,gainA,gainB);
-  couplingDmp = dmpTemp2;
-
-  //set current coupling term to zero
-  std::vector<double> tempVec(q0.size(),0.0);
-  couplingTerm = tempVec;
+  initCouplingObject(dofs, dt, gainA, gainB);
 
   ROS_INFO("DmpCtVelocityController: setup DMP objects");
 
-  auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
-  // check for initial joint positions of the robot
-  ROS_INFO("DmpCtVelocityController: checking for initial joint positions of the robot");
-  try {
-    auto state_handle = state_interface->getHandle("panda_robot");
-
-    for (size_t i = 0; i < q0.size(); i++) {
-      qInit[i] = state_handle.getRobotState().q_d[i];
-      // if only just one joint is not close enough to q0, assume robot is not initialized
-      if (std::abs(qInit[i] - q0[i]) > 0.05) { //TODO: is this a good threshold?
-        notInitializedDMP = true;
-        ROS_ERROR_STREAM(
-            "DmpCtVelocityController: Robot is not in the expected starting position for "
-            "this dmp.");
-
-        //TODO: how to know, we are not running this controller? difference between loading and starting...
-        //return false;
-      }
-    }
-  } catch (const hardware_interface::HardwareInterfaceException& e) {
-    ROS_ERROR_STREAM(
-        "DmpCtVelocityController: Exception getting state handle: " << e.what());
-    return false;
-  }
+  initROSCommunication();
 
   if (!node_handle.getParam("/franka_control/robot_ip", robotIp)) {
     ROS_ERROR("Invalid or no robot_ip parameter provided");    
@@ -89,7 +57,6 @@ void DmpCtVelocityController::starting(const ros::Time& /* time */) {
   msgBatch.samples.clear();
 
   //assume initialization
-  notInitializedDMP = false;
   flagPubEx = false;
 
   //set current coupling term to zero
@@ -101,22 +68,6 @@ void DmpCtVelocityController::starting(const ros::Time& /* time */) {
     ROS_ERROR("DmpCtVelocityController: Could not get state interface from hardware when starting the controller");
   }
 
-  // check for initial joint positions of the robot
-  try {
-    auto state_handle = state_interface->getHandle("panda_robot");
-
-    for (size_t i = 0; i < q0.size(); i++) {
-      qInit[i] = state_handle.getRobotState().q_d[i];
-      // if only just one joint is not close enough to q0, assume robot is not initialized
-      if (std::abs(state_handle.getRobotState().q_d[i] - q0[i]) > 0.05) {
-        notInitializedDMP = true;
-        std::cout<<"DmpCtVelocityController: joint #"<<i<<" is not in the initial position yet"<<std::endl;
-      }
-    }
-  } catch (const hardware_interface::HardwareInterfaceException& e) {
-    ROS_ERROR_STREAM(
-        "DmpCtVelocityController: Exception getting state handle: " << e.what());
-  }
   elapsed_time_ = ros::Duration(0.0);
 }
 
@@ -313,6 +264,19 @@ void DmpCtVelocityController::initDmpObjects(int &dofs, int &nBFs, double &dt, s
     std::vector<std::vector<double>> dummY;
     dmp.rollout(refDmpTraj,refDmpVel,dummY,externalForce,tau, -1, 0);
     dmp.resettState();
+}
+
+void DmpCtVelocityController::initCouplingObject (int &dofs, double &dt, std::vector<double> &gainA,
+                                                  std::vector<double> &gainB){
+    std::vector<double> initCoupling(dofs, 0.0);
+    std::vector<double> goalCoupling(dofs, 0.0);
+    scaleCoupling = 10; // i.e. 10 steps of coulingDmp per dmp step
+    DiscreteDMP dmpTemp2(dofs,dt/scaleCoupling,initCoupling,goalCoupling,gainA,gainB);
+    couplingDmp = dmpTemp2;
+
+    //set current coupling term to zero
+    std::vector<double> tempVec(q0.size(),0.0);
+    couplingTerm = tempVec;
 }
 
 }  // namespace prcdmp_node

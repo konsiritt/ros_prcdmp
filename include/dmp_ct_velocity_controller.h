@@ -53,6 +53,8 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   void initDmpObjects(int &dofs, int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
                       std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB);
 
+  void initCouplingObject (int &dofs, double &dt, std::vector<double> &gainA, std::vector<double> &gainB);
+
   hardware_interface::VelocityJointInterface* velocity_joint_interface_;
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
   ros::Duration elapsed_time_;
@@ -90,8 +92,6 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   std::array<double,7> qInit;
   std::string robotIp;
 
-  // flag whether or not moving to start is necessary
-  bool notInitializedDMP = false;
   // flag wheter or not the target dmp is being executed
   bool executingDMP = false;
 
