@@ -112,7 +112,7 @@ void DMP::rollout(std::vector<std::vector<double>> &yTrack, std::vector<std::vec
         high_resolution_clock::time_point t1 = high_resolution_clock::now();
         if (doSimpleRollout)
         {
-            simpleStep(externalForce, tau, error);
+            simpleStep(externalForce, tau);
         }
         else
         {
@@ -167,12 +167,10 @@ std::vector<double> DMP::step( std::vector<double> &externalForce, double tau, d
     return this->dy;
 }
 
-std::vector<double> DMP::simpleStep( std::vector<double> &externalForce, double tau, double error)
+std::vector<double> DMP::simpleStep( std::vector<double> &externalForce, const double &tau)
 {
-    double errorCoupling = 1.0/(1.0+error);
+    double x    = cs.step(tau, 1.0);
 
-    double x    = cs.step(tau, errorCoupling);
-    //std::cout<<"step(): calculated x="<<x<<std::endl;
     if (x < endThreshold) {trajFinished = true;}
 
     for (int i=0; i<nDMPs; i++)
@@ -180,21 +178,17 @@ std::vector<double> DMP::simpleStep( std::vector<double> &externalForce, double 
 	//specifically for a constant function: goal and initial value are the same, to prevent small number errors
         if (this->y[i] == goal[i])
         {
-            this->ddy[i] = 0;
-            this->dy[i] = 0;
+            this->ddy[i] = 0.0;
+            this->dy[i] = 0.0;
         }
         else
         {
-            this->ddy[i] = tau*tau*(gainA[i]* (gainB[i]*(goal[i]-this->y[i] -(goal[i] - y0[i])*x ) -this->dy[i]/tau)); //2009
+            this->ddy[i] = tau*tau*(gainA[i]* (gainB[i]*(goal[i]-this->y[i] -(goal[i] - y0[i])*x ) -this->dy[i]/tau));
 
-            if(externalForce.size()==nDMPs)
-            {
-                this->ddy[i] += externalForce[i];
-            }
-            this->dy[i] += this->ddy[i]*dt*errorCoupling;
+            this->dy[i] += this->ddy[i]*dt;
         }
 
-        this->y[i]  += this->dy[i]*dt*errorCoupling;
+        this->y[i]  += this->dy[i]*dt;
     }
     return this->dy;
 }

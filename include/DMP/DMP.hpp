@@ -81,7 +81,7 @@ public:
      * @param error
      * @return the dmp velocity vector
      */
-    virtual std::vector<double> simpleStep( std::vector<double> &externalForce, double tau=1.0, double error=0.0);
+    virtual std::vector<double> simpleStep(std::vector<double> &externalForce, const double &tau=1.0);
 
     /**
      * @brief resettState resets all parameters to allow a restart of the dmp
