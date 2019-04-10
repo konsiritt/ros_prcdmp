@@ -243,7 +243,7 @@ void DmpCtVelocityController::initCouplingObject (int &dofs, double &dt, std::ve
 
 void DmpCtVelocityController::advanceCouplingTerm(){
     //taking intermediate steps in order to allow faster dynamic
-    for (int i=10; i<scaleCoupling; ++i) {
+    for (int i=0; i<scaleCoupling; ++i) {
       couplingDmp.simpleStep(externalForce, 1/timeCouplingFinal/scaleCoupling); // 1/timeCouplingFinal/scaleCoupling : final value should be achieved at timeCouplingFinal
     }
     couplingTerm = couplingDmp.getY();
