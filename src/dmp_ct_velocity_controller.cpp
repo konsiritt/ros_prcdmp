@@ -83,6 +83,8 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
     checkStoppingCondition();
 
     commandRobot(dq);
+
+    iterateRef++;
 }
 
 void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
@@ -95,7 +97,7 @@ void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
 
 //TODO: adapt to react to a change of the coupling term as a topic
 void DmpCtVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
-    if(!dmp.getTrajFinished() && elapsedTime.toSec()>0.0 && msgCoupling.msg_id == UNDEFINED){
+    if(!dmp.getTrajFinished() && elapsedTime.toSec()>0.0 && msgCoupling.msg_id != UNDEFINED){
         addCurrMessage();
     }
     else {
@@ -121,7 +123,7 @@ void DmpCtVelocityController::addCurrMessage(){
     for (int i=0; i < qDmp.size(); ++i) {
         tempArray[i] = refDmpTraj[iterateRef][i] - qDmp[i];
     }
-    iterateRef++;
+
     tempMsg.q_offset = tempArray;
     msgBatch.samples.push_back(tempMsg);
 }
