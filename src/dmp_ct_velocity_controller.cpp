@@ -250,7 +250,7 @@ void DmpCtVelocityController::checkStoppingCondition(){
     if (dmp.getTrajFinished()) {
       //publish the changed states to a topic so that the controller_manager can switch controllers
       if (!flagPubEx) {
-        ROS_INFO("DmpCtVelocityController: finished the target trajectory after time[s]: [%f]", elapsedTime);
+        ROS_INFO("DmpCtVelocityController: finished the target trajectory after time[s]: [%f]", elapsedTime.toSec());
         std_msgs::Bool msg;
         msg.data = false;
         pubExec.publish(msg);
