@@ -100,9 +100,6 @@ void DmpCtVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstP
     if(!dmp.getTrajFinished() && elapsedTime.toSec()>0.0 && msgCoupling.msg_id != UNDEFINED){
         addCurrMessage();
     }
-    else {
-        ROS_INFO("not adding messages yet");
-    }
 
     // reset counter that counts control cycles per ct
     msgCoupling = *msg;
