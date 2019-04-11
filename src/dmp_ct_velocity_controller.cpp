@@ -124,6 +124,11 @@ void DmpCtVelocityController::addCurrMessage(){
     boost::array<double,7> tempArray = {0.0};
     for (int i=0; i < qDmp.size(); ++i) {
         tempArray[i] = refDmpTraj[iterateRef][i] - qDmp[i];
+        if (tempArray[i]>10 || tempArray[i]<10) {
+            std::cout<<"refDmpTraj[iterateRef][i]: "<<refDmpTraj[iterateRef][i]<<std::endl;
+            std::cout<<"qDmp[i]: "<<qDmp[i]<<std::endl;
+            std::cout<<"tempArray[i] :"<<tempArray[i]<<std::endl;
+        }
     }
 
     tempMsg.q_offset = tempArray;
