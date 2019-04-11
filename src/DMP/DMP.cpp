@@ -169,27 +169,34 @@ std::vector<double> DMP::step( std::vector<double> &externalForce, double tau, d
 
 std::vector<double> DMP::simpleStep( std::vector<double> &externalForce, const double &tau)
 {
+    std::cout<<"DMP simple Step: stepping the canonical system"<<std::endl;
     double x    = cs.step(tau, 1.0);
 
     if (x < endThreshold) {trajFinished = true;}
 
+    std::cout<<"DMP simple Step: iterate through each dof"<<std::endl;
     for (int i=0; i<nDMPs; i++)
     {
 	//specifically for a constant function: goal and initial value are the same, to prevent small number errors
         if (this->y[i] == goal[i])
         {
+            std::cout<<"DMP simple Step: no acceleration needed"<<std::endl;
             this->ddy[i] = 0.0;
             this->dy[i] = 0.0;
         }
         else
         {
+            std::cout<<"DMP simple Step: calc acceleration"<<std::endl;
             this->ddy[i] = tau*tau*(gainA[i]* (gainB[i]*(goal[i]-this->y[i] -(goal[i] - y0[i])*x ) -this->dy[i]/tau));
 
+            std::cout<<"DMP simple Step: calc velocity"<<std::endl;
             this->dy[i] += this->ddy[i]*dt;
         }
 
+        std::cout<<"DMP simple Step: calc position"<<std::endl;
         this->y[i]  += this->dy[i]*dt;
     }
+    std::cout<<"DMP simple Step: returning"<<std::endl;
     return this->dy;
 }
 

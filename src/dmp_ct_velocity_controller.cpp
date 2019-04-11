@@ -79,7 +79,6 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
     std::vector<double> dq(q0.size(),0.0000001);
     dq = dmp.step(externalForce, tau);
     qDmp = dmp.getY();
-
     checkStoppingCondition();
 
     commandRobot(dq);
