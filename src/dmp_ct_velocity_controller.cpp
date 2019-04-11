@@ -73,22 +73,22 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
                                      const ros::Duration& period) {
     elapsedTime += period;
 
-    ROS_INFO("advancing the coupling term");
+//    ROS_INFO("advancing the coupling term");
     advanceCouplingTerm();
 
     //advance the actual dmp
-    ROS_INFO("advancing the dmp");
+//    ROS_INFO("advancing the dmp");
     std::vector<double> dq(q0.size(),0.0000001);
     dq = dmp.step(externalForce, tau);
     qDmp = dmp.getY();
 
-    ROS_INFO("checking stopping conditions");
+//    ROS_INFO("checking stopping conditions");
     checkStoppingCondition();
 
-    ROS_INFO("commanding on the robot");
+//    ROS_INFO("commanding on the robot");
     commandRobot(dq);
 
-    ROS_INFO("done with update");
+//    ROS_INFO("done with update");
     iterateRef++;
 }
 
@@ -124,7 +124,7 @@ void DmpCtVelocityController::addCurrMessage(){
     boost::array<double,7> tempArray = {0.0};
     for (int i=0; i < qDmp.size(); ++i) {
         tempArray[i] = refDmpTraj[iterateRef][i] - qDmp[i];
-        if (tempArray[i]>10 || tempArray[i]<10) {
+        if (tempArray[i]>10.0 || tempArray[i]<-10.0) {
             std::cout<<"refDmpTraj[iterateRef][i]: "<<refDmpTraj[iterateRef][i]<<std::endl;
             std::cout<<"qDmp[i]: "<<qDmp[i]<<std::endl;
             std::cout<<"tempArray[i] :"<<tempArray[i]<<std::endl;
