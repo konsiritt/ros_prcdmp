@@ -115,6 +115,7 @@ void DmpCtVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstP
 }
 
 void DmpCtVelocityController::addCurrMessage(){
+    common_msgs::MDPSample tempMsg;
     tempMsg.ct = msgCoupling;
     tempMsg.reward = 0.0;
     tempMsg.mask = 0;
