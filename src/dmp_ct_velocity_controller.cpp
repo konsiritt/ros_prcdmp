@@ -103,13 +103,12 @@ void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
 //TODO: adapt to react to a change of the coupling term as a topic
 void DmpCtVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
     if(!dmp.getTrajFinished() && elapsedTime.toSec()>0.0 && msgCoupling.msg_id != UNDEFINED){
-        addCurrMessage();
+//        addCurrMessage();
     }
-//    msgCoupling = *msg;
-//    msgCoupling.header = msg->header;
-//    msgCoupling.data = msg->data;
-    msgCoupling.data = boost::array<double,7>();
-//    msgCoupling.msg_id = msg->msg_id;
+    msgCoupling = *msg;
+    msgCoupling.header = msg->header;
+    msgCoupling.data = msg->data;
+    msgCoupling.msg_id = msg->msg_id;
     std::vector<double> temp(msgCoupling.data.begin(),msgCoupling.data.end());
     couplingDmp.setInitialPosition(couplingTerm);
     couplingDmp.setFinalPosition(temp);
@@ -140,7 +139,7 @@ void DmpCtVelocityController::initROSCommunication(){
     pubBatch = nodeHandle->advertise<common_msgs::SamplesBatch>("/prcdmp/episodic_batch", 1000);
 
     //----------------------subscriber that handles changes to the dmp coupling term----------------------
-    subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 100, &DmpCtVelocityController::ctCallback, this);
+    //subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 100, &DmpCtVelocityController::ctCallback, this);
 
     msgCoupling.msg_id = UNDEFINED;
 }
