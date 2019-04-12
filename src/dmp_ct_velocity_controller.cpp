@@ -58,8 +58,7 @@ void DmpCtVelocityController::starting(const ros::Time& /* time */) {
     flagPubEx = false;
 
     //set current coupling term to zero
-    std::vector<double> tempVec(q0.size(),0.0);
-    couplingTerm = tempVec;
+    couplingTerm = std::vector<double>(dofs,0.0);
 
     auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
     if (state_interface == nullptr) {
@@ -78,8 +77,7 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
 
     //advance the actual dmp
 //    ROS_INFO("advancing the dmp");
-    std::vector<double> dq(q0.size(),0.0000001);
-    dq = dmp.step(externalForce, tau);
+    std::vector<double> dq = dmp.step(externalForce, tau);
     qDmp = dmp.getY();
 
 //    ROS_INFO("checking stopping conditions");
@@ -206,8 +204,7 @@ bool DmpCtVelocityController::loadDmpData(int &nBFs, double &dt, std::vector<dou
     double timeSpan = config.getDmpJson()["timespan"].asDouble();
     tau = 1.0/timeSpan;
     //------initialize arrays from config file----------------------
-//    std::array<double,7> goal;
-    moveJsonArrayToVec(config.getDmpJson()["q0"], y0v); // why isnt q0 a vector
+    moveJsonArrayToVec(config.getDmpJson()["q0"], y0v);
     moveJsonArrayToVec(config.getDmpJson()["goal"], goalv);
     moveJsonArrayToVec(config.getDmpJson()["gain_a"], gainA);
     moveJsonArrayToVec(config.getDmpJson()["gain_b"], gainB);
@@ -221,9 +218,6 @@ bool DmpCtVelocityController::loadDmpData(int &nBFs, double &dt, std::vector<dou
     else {
         UTILS::loadWeights(config.getwPath(),w);
     }
-//    //------convert arrays to vectors----------------------
-//    y0v = std::vector<double> (q0.begin(), q0.end());
-//    goalv = std::vector<double> (goal.begin(), goal.end());
 
     refDmpTraj.reserve(int(timeSpan/dt));
     refDmpVel.reserve(int(timeSpan/dt));
@@ -250,8 +244,7 @@ void DmpCtVelocityController::initCouplingObject (double &dt, std::vector<double
     couplingDmp = DiscreteDMP(dofs,dt/scaleCoupling,initCoupling,goalCoupling,gainA,gainB);
 
     //set current coupling term to zero
-    std::vector<double> tempVec(q0.size(),0.0);
-    couplingTerm = tempVec;
+    couplingTerm = std::vector<double>(dofs,0.0);
 }
 
 void DmpCtVelocityController::advanceCouplingTerm(){
