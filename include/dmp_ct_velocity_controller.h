@@ -47,13 +47,13 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
 
   bool checkRobotSetup();
 
-  bool loadDmpData(int &dofs, int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
+  bool loadDmpData(int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
                    std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB);
 
-  void initDmpObjects(int &dofs, int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
+  void initDmpObjects(int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
                       std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB);
 
-  void initCouplingObject (int &dofs, double &dt, std::vector<double> &gainA, std::vector<double> &gainB);
+  void initCouplingObject (double &dt, std::vector<double> &gainA, std::vector<double> &gainB);
 
   void advanceCouplingTerm();
 
@@ -71,6 +71,7 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   // handle for ROS node (communication, maybe not the best idea - performance?)
   ros::NodeHandle* nodeHandle;
 
+  int dofs;
   // dmp class
   DiscreteDMP dmp;
   // reference dmp joint states without coupling term
@@ -96,8 +97,6 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   std::array<double,7> q0;
   // current joint position of the dmp
   std::vector<double> qDmp;
-  // initial joint position of the robot
-  std::array<double,7> qInit;
   std::string robotIp;
 
   // callback function reacting to coupling term input

@@ -21,16 +21,16 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
     if (!checkRobotSetup()) {return false;}
 
     //----------------------load DMP specific config data from files----------------------
-    int dofs, nBFs;
+    int nBFs;
     double dt;
     std::vector<double> initialPosition, goalPosition, gainA, gainB;
     std::vector<std::vector<double>> weights ;
-    loadDmpData(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
+    loadDmpData(nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
 
     //----------------------initialize dmp runtime object----------------------
-    initDmpObjects(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
+    initDmpObjects(nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
 
-    initCouplingObject(dofs, dt, gainA, gainB);
+    initCouplingObject(dt, gainA, gainB);
 
     ROS_INFO("DmpCtVelocityController: setup DMP objects");
 
@@ -186,7 +186,7 @@ bool DmpCtVelocityController::checkRobotSetup(){
     return true;
 }
 
-bool DmpCtVelocityController::loadDmpData(int &dofs, int &nBFs, double &dt, std::vector<double> &y0v,
+bool DmpCtVelocityController::loadDmpData(int &nBFs, double &dt, std::vector<double> &y0v,
                                           std::vector<double> &goalv, std::vector<std::vector<double> > &w,
                                           std::vector<double> &gainA, std::vector<double> &gainB) {
     //----------------------load DMP specific config data from files----------------------
@@ -206,9 +206,9 @@ bool DmpCtVelocityController::loadDmpData(int &dofs, int &nBFs, double &dt, std:
     double timeSpan = config.getDmpJson()["timespan"].asDouble();
     tau = 1.0/timeSpan;
     //------initialize arrays from config file----------------------
-    std::array<double,7> goal;
-    moveJsonArrayToVec(config.getDmpJson()["q0"], q0); // why isnt q0 a vector
-    moveJsonArrayToVec(config.getDmpJson()["goal"], goal);
+//    std::array<double,7> goal;
+    moveJsonArrayToVec(config.getDmpJson()["q0"], y0v); // why isnt q0 a vector
+    moveJsonArrayToVec(config.getDmpJson()["goal"], goalv);
     moveJsonArrayToVec(config.getDmpJson()["gain_a"], gainA);
     moveJsonArrayToVec(config.getDmpJson()["gain_b"], gainB);
     //------fill data from json to variables----------------------
@@ -221,11 +221,9 @@ bool DmpCtVelocityController::loadDmpData(int &dofs, int &nBFs, double &dt, std:
     else {
         UTILS::loadWeights(config.getwPath(),w);
     }
-    //------convert arrays to vectors----------------------
-
-    std::vector<double> goalvTemp(goal.begin(), goal.end());
-    y0v = std::vector<double> (q0.begin(), q0.end());
-    goalv = goalvTemp;
+//    //------convert arrays to vectors----------------------
+//    y0v = std::vector<double> (q0.begin(), q0.end());
+//    goalv = std::vector<double> (goal.begin(), goal.end());
 
     refDmpTraj.reserve(int(timeSpan/dt));
     refDmpVel.reserve(int(timeSpan/dt));
@@ -233,7 +231,7 @@ bool DmpCtVelocityController::loadDmpData(int &dofs, int &nBFs, double &dt, std:
     return true;
 }
 
-void DmpCtVelocityController::initDmpObjects(int &dofs, int &nBFs, double &dt, std::vector<double> &initialPosition,
+void DmpCtVelocityController::initDmpObjects(int &nBFs, double &dt, std::vector<double> &initialPosition,
                                              std::vector<double> &goalPosition, std::vector<std::vector<double> > &weights,
                                              std::vector<double> &gainA, std::vector<double> &gainB) {
     //DiscreteDMP dmpTemp(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
@@ -243,7 +241,7 @@ void DmpCtVelocityController::initDmpObjects(int &dofs, int &nBFs, double &dt, s
     dmp.resettState();
 }
 
-void DmpCtVelocityController::initCouplingObject (int &dofs, double &dt, std::vector<double> &gainA,
+void DmpCtVelocityController::initCouplingObject (double &dt, std::vector<double> &gainA,
                                                   std::vector<double> &gainB){
     std::vector<double> initCoupling(dofs, 0.0);
     std::vector<double> goalCoupling(dofs, 0.0);
