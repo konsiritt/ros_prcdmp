@@ -110,7 +110,7 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   // current CouplingTerm message received
   common_msgs::CouplingTerm msgCoupling;
   // current temporary sample we add to the batch
-  //common_msgs::MDPSample tempMsg;
+  common_msgs::MDPSample tempMsg;
 
   bool flagPubEx  = false;
 };
