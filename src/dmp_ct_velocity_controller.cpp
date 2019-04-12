@@ -222,9 +222,9 @@ bool DmpCtVelocityController::loadDmpData(int &dofs, int &nBFs, double &dt, std:
         UTILS::loadWeights(config.getwPath(),w);
     }
     //------convert arrays to vectors----------------------
-    std::vector<double> y0vTemp(q0.begin(), q0.end());
+
     std::vector<double> goalvTemp(goal.begin(), goal.end());
-    y0v = y0vTemp;
+    y0v = std::vector<double> (q0.begin(), q0.end());
     goalv = goalvTemp;
 
     refDmpTraj.reserve(int(timeSpan/dt));
@@ -249,8 +249,7 @@ void DmpCtVelocityController::initCouplingObject (int &dofs, double &dt, std::ve
     std::vector<double> goalCoupling(dofs, 0.0);
     scaleCoupling = 10; // i.e. 10 steps of coulingDmp per dmp step
     timeCouplingFinal = 0.003; // [ms] until final value is 99% reached
-    DiscreteDMP dmpTemp2(dofs,dt/scaleCoupling,initCoupling,goalCoupling,gainA,gainB);
-    couplingDmp = dmpTemp2;
+    couplingDmp = DiscreteDMP(dofs,dt/scaleCoupling,initCoupling,goalCoupling,gainA,gainB);
 
     //set current coupling term to zero
     std::vector<double> tempVec(q0.size(),0.0);
