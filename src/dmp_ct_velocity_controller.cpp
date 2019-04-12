@@ -26,7 +26,7 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
     int nBFs;
     double dt;
     std::vector<double> initialPosition, goalPosition, gainA, gainB;
-    std::vector<std::vector<double>> weights ;
+    std::vector<std::vector<double>> weights;
     loadDmpData(nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
 
     //----------------------initialize dmp runtime object----------------------
@@ -38,7 +38,7 @@ bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
 
     initROSCommunication();
 
-    msgBatch.samples.reserve(1/tau/dt/30);
+    msgBatch.samples.reserve((int) 1/tau/dt/30);
 
     return true;
 }
@@ -103,7 +103,7 @@ void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
 //TODO: adapt to react to a change of the coupling term as a topic
 void DmpCtVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
     if(!dmp.getTrajFinished() && elapsedTime.toSec()>0.0 && msgCoupling.msg_id != UNDEFINED){
-//        addCurrMessage();
+        addCurrMessage();
     }
     msgCoupling = *msg;
     msgCoupling.header = msg->header;
@@ -115,7 +115,6 @@ void DmpCtVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstP
 }
 
 void DmpCtVelocityController::addCurrMessage(){
-    common_msgs::MDPSample tempMsg;
     tempMsg.ct = msgCoupling;
     tempMsg.reward = 0.0;
     tempMsg.mask = 0;
@@ -128,7 +127,6 @@ void DmpCtVelocityController::addCurrMessage(){
             std::cout<<"tempArray[i] :"<<tempArray[i]<<std::endl;
         }
     }
-
     tempMsg.q_offset = tempArray;
     msgBatch.samples.push_back(tempMsg);
 }
@@ -219,8 +217,8 @@ bool DmpCtVelocityController::loadDmpData(int &nBFs, double &dt, std::vector<dou
         UTILS::loadWeights(config.getwPath(),w);
     }
 
-    refDmpTraj.reserve(int(timeSpan/dt));
-    refDmpVel.reserve(int(timeSpan/dt));
+    refDmpTraj.reserve((int) timeSpan/dt);
+    refDmpVel.reserve((int) timeSpan/dt);
 
     return true;
 }
