@@ -1,5 +1,3 @@
-// Copyright (c) 2017 Franka Emika GmbH
-// Use of this source code is governed by the Apache-2.0 license, see LICENSE
 #include <dmp_ct_velocity_controller.h>
 
 #include <cmath>
@@ -209,7 +207,7 @@ bool DmpCtVelocityController::loadDmpData(int &dofs, int &nBFs, double &dt, std:
     tau = 1.0/timeSpan;
     //------initialize arrays from config file----------------------
     std::array<double,7> goal;
-    moveJsonArrayToVec(config.getDmpJson()["q0"], q0);
+    moveJsonArrayToVec(config.getDmpJson()["q0"], q0); // why isnt q0 a vector
     moveJsonArrayToVec(config.getDmpJson()["goal"], goal);
     moveJsonArrayToVec(config.getDmpJson()["gain_a"], gainA);
     moveJsonArrayToVec(config.getDmpJson()["gain_b"], gainB);
@@ -238,8 +236,8 @@ bool DmpCtVelocityController::loadDmpData(int &dofs, int &nBFs, double &dt, std:
 void DmpCtVelocityController::initDmpObjects(int &dofs, int &nBFs, double &dt, std::vector<double> &initialPosition,
                                              std::vector<double> &goalPosition, std::vector<std::vector<double> > &weights,
                                              std::vector<double> &gainA, std::vector<double> &gainB) {
-    DiscreteDMP dmpTemp(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
-    dmp = dmpTemp;
+    //DiscreteDMP dmpTemp(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
+    dmp = DiscreteDMP(dofs, nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);;
     std::vector<std::vector<double>> dummY;
     dmp.rollout(refDmpTraj,refDmpVel,dummY,externalForce,tau, -1, 0);
     dmp.resettState();
