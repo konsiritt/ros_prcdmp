@@ -11,7 +11,7 @@
 
 namespace prcdmp_node {
 
-#define  -666
+#define UNDEFINED -666
 
 bool DmpCtVelocityController::init(hardware_interface::RobotHW* robot_hardware,
                                    ros::NodeHandle& node_handle) {
