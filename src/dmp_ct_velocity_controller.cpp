@@ -139,7 +139,7 @@ void DmpCtVelocityController::initROSCommunication(){
     pubBatch = nodeHandle->advertise<common_msgs::SamplesBatch>("/prcdmp/episodic_batch", 1000);
 
     //----------------------subscriber that handles changes to the dmp coupling term----------------------
-    subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 100, &DmpCtVelocityController::ctCallback, this);
+    //subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 100, &DmpCtVelocityController::ctCallback, this);
 
     msgCoupling.msg_id = UNDEFINED;
 }
