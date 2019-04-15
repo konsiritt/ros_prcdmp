@@ -104,7 +104,7 @@ void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
 void DmpCtVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
     ROS_INFO("we are getting a callback");
     if(!dmp.getTrajFinished() && elapsedTime.toSec()>0.0 && msgCoupling.msg_id != UNDEFINED){
-        addCurrMessage();
+//        addCurrMessage();
     }
     msgCoupling = *msg;
     msgCoupling.header = msg->header;
@@ -251,7 +251,7 @@ void DmpCtVelocityController::initCouplingObject (double &dt, std::vector<double
 void DmpCtVelocityController::advanceCouplingTerm(){
     //taking intermediate steps in order to allow faster dynamic
     for (int i=0; i<scaleCoupling; ++i) {
-        couplingDmp.simpleStep(externalForce, 1/timeCouplingFinal/scaleCoupling); // 1/timeCouplingFinal/scaleCoupling : final value should be achieved at timeCouplingFinal
+        couplingDmp.simpleStep(externalForce, 1.0/timeCouplingFinal/scaleCoupling); // 1/timeCouplingFinal/scaleCoupling : final value should be achieved at timeCouplingFinal
     }
     couplingTerm = couplingDmp.getY();
     dmp.setCouplingTerm(couplingTerm);
