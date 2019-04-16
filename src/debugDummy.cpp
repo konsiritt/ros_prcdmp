@@ -162,7 +162,7 @@ int main(int argc, char **argv)
   // ros::ok == False handles interruptions
   int count = 0;
 
-  ros::Time currentTime;
+  ros::Time currentTime = ros::Time::now();
   ros::Duration diff;
   while (ros::ok())
   {
@@ -179,6 +179,8 @@ int main(int argc, char **argv)
     ++count;
   }
 
+  std::cout<<"shutting down the debug dummy node now"<<std::endl;
+  ros::shutdown();
 
   return 0;
 }
