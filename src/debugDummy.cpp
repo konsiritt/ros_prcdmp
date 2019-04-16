@@ -147,7 +147,7 @@ int main(int argc, char **argv)
   std::cout<< "after ros::init"<<std::endl;
 
   // NodeHandle is the main access point to communications with the ROS system.
-  ros::NodeHandle n;
+  ros::NodeHandle n("debug");
 
   std::cout<<"about to go into constructor"<<std::endl;
 
