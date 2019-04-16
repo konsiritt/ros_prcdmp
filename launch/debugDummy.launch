@@ -1,0 +1,5 @@
+<?xml version="1.0" ?>
+<launch>
+  <node name="debug_dummy" pkg="prcdmp_node" type="debugDummy" respawn="false" output="screen" launch-prefix="xterm -e gdb --args"/>
+</launch>
+
