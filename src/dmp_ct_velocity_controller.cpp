@@ -102,7 +102,7 @@ void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
 
 //TODO: adapt to react to a change of the coupling term as a topic
 void DmpCtVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
-    ROS_INFO("we are getting a callback");
+//    ROS_INFO("we are getting a callback");
     if(!dmp.getTrajFinished() && elapsedTime.toSec()>0.0 && msgCoupling.msg_id != UNDEFINED){
         addCurrMessage();
     }
@@ -122,7 +122,7 @@ void DmpCtVelocityController::smoothCallback(const common_msgs::CouplingTerm::Co
 }
 
 void DmpCtVelocityController::addCurrMessage(){
-    ROS_INFO("adding a new batch to send back to Elie");
+//    ROS_INFO("adding a new batch to send back to Elie");
 //    common_msgs::MDPSample tempMsg;
     tempMsg.ct = msgCoupling;
     tempMsg.reward = 0.0;
