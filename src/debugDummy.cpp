@@ -79,66 +79,7 @@ void debugDummy::update(const ros::Time& /* time */,
 debugDummy::~debugDummy(){
 }
 
-void debugDummy::initializedCallback(const std_msgs::Bool::ConstPtr& msg)
-{
-  if (!msg->data) {
-    //TODO: this is the case that is switched upon other conditions, i.e. is the learner ready etc.
-    //std_msgs::Bool msg;
-    //msg.data = true;
-    //pubExec.publish(msg);
-
-    notInit = msg->data;
-
-    ros::Duration(1.5).sleep();
-
-    ROS_INFO("switching controllers now to start execution of DMP controller dmp_velocity_controller");
-    if (!clientSwitch.call(srvExec)) {
-      ROS_INFO("switch controller service call failed in initializedCallback");
-    }
-    // debugging
-    if (srvExec.response.ok){
-      std::cout<<"debugDummy: response to switch service of dmp_velocity_controller is ok"<<std::endl;
-    }
-    else {
-      std::cout<<"debugDummy: response to switch service of dmp_velocity_controller is NOT ok"<<std::endl;
-    }
-  }
-  else if (notInit!=msg->data){
-    notInit = msg->data;
-    // state: not initialized, also set executeDMP to false, which in turn will initialize the robot
-    std_msgs::Bool msg;
-    msg.data = false;
-    pubExec.publish(msg);
-  }
-  else {
-  }
-}
-
-void debugDummy::executedCallback(const std_msgs::Bool::ConstPtr& msg)
-{
-  if (!msg->data) {
-    ros::Duration(1.5).sleep();
-
-    ROS_INFO("switching controllers now to return robot into starting pose");
-    if (!clientSwitch.call(srvInit)) {
-      ROS_INFO("switch controller service call failed in executedCallback");
-    }
-    // debugging
-    if (srvInit.response.ok){
-      std::cout<<"debugDummy: response to switch service of dmpstart_velocity_controller is ok"<<std::endl;
-    }
-    else {
-      std::cout<<"debugDummy: response to switch service of dmpstart_velocity_controller is NOT ok"<<std::endl;
-    }
-  }
-}
-
 int main(int argc, char **argv)
-/*
- * 1. Initialize the ROS system
- * 2. Advertize that we are publishing on the chatter topic to the master
- * 3. Loop while publishing messages to chatter 10 times a second
- */
 {
 
   std::cout<< "in the main now"<<std::endl;
@@ -152,7 +93,7 @@ int main(int argc, char **argv)
   std::cout<<"about to go into constructor"<<std::endl;
 
   // initializes Service dummy, using callbacks to topics to switch controllers
-  debugDummy serviceMngr(n);
+  debugDummy debugDummyO(n);
 
   std::cout<< "constructed the debug dummy object"<<std::endl;
 
@@ -169,7 +110,7 @@ int main(int argc, char **argv)
     diff = ros::Time::now() - currentTime;
     currentTime = ros::Time::now();
 
-    serviceMngr.update(currentTime,diff);
+    debugDummyO.update(currentTime,diff);
 
     // to add possible subscription when receiving a callback
     ros::spinOnce();
@@ -179,7 +120,7 @@ int main(int argc, char **argv)
     ++count;
   }
 
-  std::cout<<"shutting down the debug dummy node now"<<std::endl;
+  std::cout<<"shutting down the debug dummy node now, after "<<count<<" update cycles"<<std::endl;
   ros::shutdown();
 
   return 0;
@@ -261,6 +202,7 @@ void debugDummy::checkStoppingCondition(){
         if (!flagPubEx) {
             ROS_INFO("checkStoppingCondition: finished the target trajectory after time[s]: [%f]", elapsedTime.toSec());
             flagPubEx = true;
+            std::cout<<"publishing the msgBatch of size: "<<msgBatch.samples.size()<< " now" <<std::endl;
             pubBatch.publish(msgBatch);
             this->starting(ros::Time::now());
             std::cout<<"restarting the dmp now"<<std::endl;

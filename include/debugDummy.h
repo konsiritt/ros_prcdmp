@@ -37,9 +37,6 @@ public:
   void checkStoppingCondition();
 
 private:
-  void initializedCallback(const std_msgs::Bool::ConstPtr& msg);
-  void executedCallback(const std_msgs::Bool::ConstPtr& msg);
-
   bool loadDmpData(int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
                    std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB);
 
