@@ -101,6 +101,10 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   void ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg);
   ros::Subscriber subCoupling;
 
+  // callback function reacting to coupling term input
+  void smoothCallback(const common_msgs::CouplingTerm::ConstPtr& msg);
+  ros::Subscriber smoothCoupling;
+
   // publisher for execution status flag
   ros::Publisher pubExec;
   // publisher for reward batches

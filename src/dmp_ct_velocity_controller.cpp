@@ -75,7 +75,7 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
     elapsedTime += period;
 
 //    ROS_INFO("advancing the coupling term");
-    advanceCouplingTerm();
+//    advanceCouplingTerm();
 
     //advance the actual dmp
 //    ROS_INFO("advancing the dmp");
@@ -104,7 +104,7 @@ void DmpCtVelocityController::stopping(const ros::Time& /*time*/) {
 void DmpCtVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
     ROS_INFO("we are getting a callback");
     if(!dmp.getTrajFinished() && elapsedTime.toSec()>0.0 && msgCoupling.msg_id != UNDEFINED){
-//        addCurrMessage();
+        addCurrMessage();
     }
     msgCoupling = *msg;
     msgCoupling.header = msg->header;
@@ -113,6 +113,11 @@ void DmpCtVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstP
     std::vector<double> temp(msgCoupling.data.begin(),msgCoupling.data.end());
     couplingDmp.setInitialPosition(couplingTerm);
     couplingDmp.setFinalPosition(temp);
+}
+
+void DmpCtVelocityController::smoothCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
+    std::vector<double> temp(msgCoupling.data.begin(),msgCoupling.data.end());
+    couplingTerm = temp;
 }
 
 void DmpCtVelocityController::addCurrMessage(){
@@ -140,7 +145,8 @@ void DmpCtVelocityController::initROSCommunication(){
     pubBatch = nodeHandle->advertise<common_msgs::SamplesBatch>("/prcdmp/episodic_batch", 1000);
 
     //----------------------subscriber that handles changes to the dmp coupling term----------------------
-    subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 100, &DmpCtVelocityController::ctCallback, this);
+    subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 1, &DmpCtVelocityController::ctCallback, this);
+    subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term/smoothed", 1, &DmpCtVelocityController::smoothCallback, this);
 
     msgCoupling.msg_id = UNDEFINED;
 }
