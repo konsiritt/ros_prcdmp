@@ -146,7 +146,7 @@ void DmpCtVelocityController::initROSCommunication(){
 
     //----------------------subscriber that handles changes to the dmp coupling term----------------------
     subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 1, &DmpCtVelocityController::ctCallback, this);
-    subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term/smoothed", 1, &DmpCtVelocityController::smoothCallback, this);
+    smoothCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term/smoothed", 1, &DmpCtVelocityController::smoothCallback, this);
 
     msgCoupling.msg_id = UNDEFINED;
 }
