@@ -118,6 +118,7 @@ void DmpCtVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstP
 void DmpCtVelocityController::smoothCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
     std::vector<double> temp(msgCoupling.data.begin(),msgCoupling.data.end());
     couplingTerm = temp;
+    dmp.setCouplingTerm(couplingTerm);
 }
 
 void DmpCtVelocityController::addCurrMessage(){
