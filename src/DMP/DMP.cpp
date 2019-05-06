@@ -179,7 +179,7 @@ std::vector<double> DMP::simpleStep( std::vector<double> &externalForce, const d
     {
 //        std::cout<<"i: "<<i;
 	//specifically for a constant function: goal and initial value are the same, to prevent small number errors
-        if (this->y[i] - goal[i] < 1e-6)
+        if (abs(this->y[i] - goal[i]) < 1e-6)
         {
             this->ddy[i] = 0.0;
             this->dy[i] = 0.0;
