@@ -12,6 +12,7 @@
 #include <ros/node_handle.h>
 #include <ros/time.h>
 #include "std_msgs/Bool.h"
+#include "common_msgs/CouplingTerm.h"
 
 #include "UTILS/Config.h"
 #include <string>
@@ -76,13 +77,9 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   std::array<double,7> qInit;
   std::string robotIp;
 
-  // flag whether or not moving to start is necessary
-  bool notInitializedDMP = false;
-  // flag wheter or not the target dmp is being executed
-  bool executingDMP = false;
 
   // dummy (for now) callback function reacting to boolean input
-  void callback(const std_msgs::Bool::ConstPtr& msg);
+  void ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg);
   ros::Subscriber subCoupling;
 
   // publisher for execution status flag

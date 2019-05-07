@@ -42,7 +42,7 @@ void DmpVelocityController::initROSCommunication(){
     pubExec = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_exec", 10);
 
     // subscriber that handles changes to the dmp coupling term: TODO: change to coupling term
-    subCoupling = nodeHandle->subscribe("/prcdmp/flag_exec", 10, &DmpVelocityController::callback, this);
+    subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 1, &DmpVelocityController::ctCallback, this);
 }
 
 bool DmpVelocityController::checkRobotSetup(){
@@ -143,7 +143,6 @@ bool DmpVelocityController::checkRobotInit() {
         qInit[i] = state_handle.getRobotState().q_d[i];
         // if only just one joint is not close enough to q0, assume robot is not initialized
         if (std::abs(qInit[i] - q0[i]) > 0.05) { //TODO: is this a good threshold?
-          notInitializedDMP = true;
           ROS_ERROR_STREAM(
               "DmpVelocityController: Robot is not in the expected starting position for "
               "this dmp.");
@@ -165,7 +164,6 @@ void DmpVelocityController::starting(const ros::Time& /* time */) {
   // initialize the dmp trajectory (resetting the canonical sytem)
   dmp.resettState(); 
   //assume initialization 
-  notInitializedDMP = false;
   flagPubEx = false;
 
   checkRobotInit();
@@ -217,10 +215,8 @@ void DmpVelocityController::stopping(const ros::Time& /*time*/) {
 }
 
 //TODO: adapt to react to a change of the coupling term as a topic
-void DmpVelocityController::callback(const std_msgs::Bool::ConstPtr& msg) {
+void DmpVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
 
-  this->executingDMP = msg->data;
-  //std::cout<<"DmpVelocityController: changed boolean executingDMP to: "<< executingDMP <<std::endl;
 }
 
 }  // namespace prcdmp_node
