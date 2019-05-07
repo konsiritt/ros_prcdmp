@@ -37,9 +37,25 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   void stopping(const ros::Time&) override;
 
  private:
+  void initROSCommunication();
+
+  bool checkRobotSetup();
+
+  bool loadDmpData(int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
+                   std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB);
+
+  void initDmpObjects(int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
+                      std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB);
+
+  bool checkRobotInit();
+
+  void checkStoppingCondition();
+
+  void commandRobot(const std::vector<double> &dq);
+
   hardware_interface::VelocityJointInterface* velocity_joint_interface_;
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
-  ros::Duration elapsed_time_;
+  ros::Duration elapsedTime;
 
   // handle for robot hardware (not sure if safe?)
   hardware_interface::RobotHW* robotHardware;
@@ -47,6 +63,7 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   // handle for ROS node (communication, maybe not the best idea - performance?)
   ros::NodeHandle* nodeHandle;
 
+  int dofs;
   // dmp class
   DiscreteDMP dmp;
   // time scaling factor: tau<1 -> slower execution
@@ -71,7 +88,7 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   // publisher for execution status flag
   ros::Publisher pubExec;
 
-  bool tempPublished  = false;
+  bool flagPubEx  = false;
 };
 
 }  // namespace prcdmp_node
