@@ -80,7 +80,9 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
 
   // dummy (for now) callback function reacting to boolean input
   void ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg);
+  void ctSmoothedCallback(const common_msgs::CouplingTerm::ConstPtr& msg);
   ros::Subscriber subCoupling;
+  ros::Subscriber subCouplingSmoothed;
 
   // publisher for execution status flag
   ros::Publisher pubExec;

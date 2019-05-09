@@ -43,6 +43,8 @@ void DmpVelocityController::initROSCommunication(){
 
     // subscriber that handles changes to the dmp coupling term: TODO: change to coupling term
     subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 1, &DmpVelocityController::ctCallback, this);
+    // subscriber that handles changes to the smoothed dmp coupling term
+    subCouplingSmoothed = nodeHandle->subscribe("/coupling_term_estimator/coupling_term/smoothed", 1, &DmpVelocityController::ctSmoothedCallback, this);
 }
 
 bool DmpVelocityController::checkRobotSetup(){
@@ -218,6 +220,12 @@ void DmpVelocityController::stopping(const ros::Time& /*time*/) {
 void DmpVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
 
 }
+void DmpVelocityController::ctSmoothedCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
+    std::vector<double> couplings;
+    couplings.push_back(*msg->data.data());
+    dmp.setCouplingTerm(couplings);
+}
+
 
 }  // namespace prcdmp_node
 
