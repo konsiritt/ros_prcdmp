@@ -13,6 +13,8 @@
 #include <ros/time.h>
 #include "std_msgs/Bool.h"
 #include "common_msgs/CouplingTerm.h"
+#include "common_msgs/MDPSample.h"
+#include "common_msgs/SamplesBatch.h"
 
 #include "UTILS/Config.h"
 #include <string>
@@ -76,6 +78,8 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   // current joint position of the robot
   std::array<double,7> qInit;
   std::string robotIp;
+  std::vector<double> refQ;
+  int refIter=0;
 
 
   // dummy (for now) callback function reacting to boolean input
@@ -84,8 +88,12 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   ros::Subscriber subCoupling;
   ros::Subscriber subCouplingSmoothed;
 
+  common_msgs::SamplesBatch ctBatch;
+  common_msgs::MDPSample ctSample;
+
   // publisher for execution status flag
   ros::Publisher pubExec;
+  ros::Publisher pubBatch;
 
   bool flagPubEx  = false;
 };

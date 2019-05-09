@@ -33,6 +33,9 @@ bool DmpVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   //----------------------initialize dmp runtime object----------------------
   initDmpObjects(nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
 
+  // unroll dmp in refQ, resetState for DMP
+  //refQ
+
   if (!checkRobotInit()) {return false;}
 
   return true;
@@ -40,6 +43,7 @@ bool DmpVelocityController::init(hardware_interface::RobotHW* robot_hardware,
 
 void DmpVelocityController::initROSCommunication(){
     pubExec = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_exec", 10);
+    pubBatch = nodeHandle->advertise<common_msgs::SamplesBatch>("/prcdmp/episodic_batch", 10);
 
     // subscriber that handles changes to the dmp coupling term: TODO: change to coupling term
     subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 1, &DmpVelocityController::ctCallback, this);
@@ -162,13 +166,16 @@ bool DmpVelocityController::checkRobotInit() {
 }
 
 void DmpVelocityController::starting(const ros::Time& /* time */) {
-  std::cout<<"DmpVelocityController: starting()"<<std::endl;
+  std::cout<<"DmpVelocityController: including ct now: starting()"<<std::endl;
   // initialize the dmp trajectory (resetting the canonical sytem)
   dmp.resettState(); 
   //assume initialization 
   flagPubEx = false;
 
   checkRobotInit();
+
+  // create new MDPbatch
+  ctBatch.samples.clear();
 
   elapsedTime = ros::Duration(0.0);
 }
@@ -214,16 +221,26 @@ void DmpVelocityController::stopping(const ros::Time& /*time*/) {
   // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
   // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
   // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
+    pubBatch.publish(ctBatch);
 }
 
 //TODO: adapt to react to a change of the coupling term as a topic
 void DmpVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
+    std::vector<double> currQ = dmp.getY();
+    //for (int i=0; i<dofs; i++)
+    //{
+     //   ctSample.q_offset[i] =abs(currQ[i] - refQ[refIter][i]);
+    //}
+    // reset for next sample
+    ctSample.mask = 0;
+    ctSample.reward = 0.0;
+    ctSample.ct = *msg;
+    ctBatch.samples.push_back(ctSample);
 
 }
 void DmpVelocityController::ctSmoothedCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
-    std::vector<double> couplings;
-    couplings.push_back(*msg->data.data());
-    dmp.setCouplingTerm(couplings);
+    std::vector<double> coupling(msg->data.begin(),msg->data.end());
+    dmp.setCouplingTerm(coupling);
 }
 
 
