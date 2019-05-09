@@ -34,7 +34,11 @@ bool DmpVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   initDmpObjects(nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
 
   // unroll dmp in refQ, resetState for DMP
-  //refQ
+
+  std::vector<std::vector<double>> refDQ, refDDQ;
+  dmp.rollout(refQ, refDQ, refDDQ,externalForce,tau, -1, 0);
+  refDQ.clear();
+  refDDQ.clear();
 
   if (!checkRobotInit()) {return false;}
 
@@ -171,6 +175,7 @@ void DmpVelocityController::starting(const ros::Time& /* time */) {
   dmp.resettState(); 
   //assume initialization 
   flagPubEx = false;
+  refIter = 0;
 
   checkRobotInit();
 
@@ -187,6 +192,7 @@ void DmpVelocityController::update(const ros::Time& /* time */,
   std::vector<double> dq(7,0.0000001);
 
   dq = dmp.step(externalForce, tau);
+  refIter++;
 
   checkStoppingCondition();
   
@@ -222,20 +228,27 @@ void DmpVelocityController::stopping(const ros::Time& /*time*/) {
   // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
   // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
     pubBatch.publish(ctBatch);
+    ROS_INFO("DmpVelocityController: batch size published: #%d", ctBatch.samples.size());
 }
 
 //TODO: adapt to react to a change of the coupling term as a topic
 void DmpVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
     std::vector<double> currQ = dmp.getY();
-    //for (int i=0; i<dofs; i++)
-    //{
-     //   ctSample.q_offset[i] =abs(currQ[i] - refQ[refIter][i]);
-    //}
+    if (refIter > 0 && !firstCB)
+    {
+        for (int i=0; i<dofs; i++)
+        {
+           ctSample.q_offset[i] =abs(currQ[i] - refQ[refIter-1][i]);
+        }
+        ctBatch.samples.push_back(ctSample);
+    }
+
     // reset for next sample
     ctSample.mask = 0;
     ctSample.reward = 0.0;
     ctSample.ct = *msg;
-    ctBatch.samples.push_back(ctSample);
+    firstCB = false;
+
 
 }
 void DmpVelocityController::ctSmoothedCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
