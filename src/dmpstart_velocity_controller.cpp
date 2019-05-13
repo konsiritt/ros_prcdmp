@@ -71,7 +71,7 @@ bool DmpStartVelocityController::init(hardware_interface::RobotHW* robot_hardwar
   std::cout<<"DmpStartVelocityController: DOFs: "<<dofs<<std::endl;
   int nBFs = config.getDmpJson()["n_basis"].asInt();
   double dt = config.getDmpJson()["dt"].asDouble();
-  double timeSpan = 3; //config.getDmpJson()["timespan"].asDouble();
+  double timeSpan = 3.5; //config.getDmpJson()["timespan"].asDouble();
   tau = 1.0/timeSpan; // TODO: for initialization the timespan can be shorter?!
 
   // initialize arrays from config file
