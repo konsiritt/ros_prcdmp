@@ -75,12 +75,11 @@ void DmpCtVelocityController::update(const ros::Time& /* time */,
     elapsedTime += period;
 
 //    ROS_INFO("advancing the coupling term");
-//    advanceCouplingTerm();
+    advanceCouplingTerm();
 
     //advance the actual dmp
 //    ROS_INFO("advancing the dmp");
     std::vector<double> dq = dmp.step(externalForce, tau);
-    qDmp = dmp.getY();
 
 //    ROS_INFO("checking stopping conditions");
     checkStoppingCondition();
@@ -124,15 +123,23 @@ void DmpCtVelocityController::smoothCallback(const common_msgs::CouplingTerm::Co
 void DmpCtVelocityController::addCurrMessage(){
 //    ROS_INFO("adding a new batch to send back to Elie");
 //    common_msgs::MDPSample tempMsg;
+    std::vector<double> currQ = dmp.getY();
     tempMsg.ct = msgCoupling;
     tempMsg.reward = 0.0;
     tempMsg.mask = 0;
     boost::array<double,7> tempArray = {0.0};
-    for (int i=0; i < qDmp.size(); ++i) {
-        tempArray[i] = refDmpTraj[iterateRef][i] - qDmp[i];
+    for (int i=0; i < currQ.size(); ++i) {
+        if (iterateRef > refDmpTraj.size())
+        {
+            ROS_INFO("DmpVelocityController: we are accessing the reference trajectory out of bounds");
+            tempArray[i]  = 0.0;
+        }
+        else {
+            tempArray[i] = refDmpTraj[iterateRef][i] - currQ[i];
+        }
         if (tempArray[i]>10.0 || tempArray[i]<-10.0) {
             std::cout<<"refDmpTraj[iterateRef][i]: "<<refDmpTraj[iterateRef][i]<<std::endl;
-            std::cout<<"qDmp[i]: "<<qDmp[i]<<std::endl;
+            std::cout<<"qDmp[i]: "<<currQ[i]<<std::endl;
             std::cout<<"tempArray[i] :"<<tempArray[i]<<std::endl;
         }
     }

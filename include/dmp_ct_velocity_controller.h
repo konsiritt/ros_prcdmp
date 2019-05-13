@@ -93,8 +93,6 @@ class DmpCtVelocityController : public controller_interface::MultiInterfaceContr
   // current coupling term per joint
   std::vector<double> couplingTerm;
 
-  // current joint position of the dmp
-  std::vector<double> qDmp;
   std::string robotIp;
 
   // callback function reacting to coupling term input
