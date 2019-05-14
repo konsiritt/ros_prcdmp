@@ -53,6 +53,11 @@ void DmpVelocityController::initROSCommunication(){
     subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 1, &DmpVelocityController::ctCallback, this);
     // subscriber that handles changes to the smoothed dmp coupling term
     subCouplingSmoothed = nodeHandle->subscribe("/coupling_term_estimator/coupling_term/smoothed", 1, &DmpVelocityController::ctSmoothedCallback, this);
+
+    subFrankaStates = nodeHandle->subscribe("/franka_state_controller/franka_states", 1, &DmpVelocityController::frankaStateCallback, this);
+
+    //    actionlib::SimpleActionClient<franka_control::ErrorRecoveryAction> tempClient("recover_robot", true);
+    //    recoveryClient = tempClient;
 }
 
 bool DmpVelocityController::checkRobotSetup(){
@@ -182,6 +187,8 @@ void DmpVelocityController::starting(const ros::Time& /* time */) {
     // create new MDPbatch
     ctBatch.samples.clear();
 
+    firstCB = true;
+
     elapsedTime = ros::Duration(0.0);
 }
 
@@ -194,9 +201,54 @@ void DmpVelocityController::update(const ros::Time& /* time */,
     dq = dmp.step(externalForce, tau);
     refIter++;
 
+    checkRobotState();
+
     checkStoppingCondition();
 
     commandRobot(dq);
+}
+
+void DmpVelocityController::checkRobotState() {
+    if (currentRobotMode != 1 && currentRobotMode != 2) {
+        switch (currentRobotMode){
+        case 0:
+            ROS_INFO("ROBOT_MODE_OTHER=0");
+            break;
+        case 3:
+            ROS_INFO("ROBOT_MODE_GUIDING=3");
+            break;
+        case 4:
+            ROS_INFO("ROBOT_MODE_REFLEX=4: Attempting error recovery!");
+            if (errorRecovery())
+            {
+                ROS_INFO("error recovery successful");
+            };
+            break;
+        case 5:
+            ROS_INFO("ROBOT_MODE_USER_STOPPED=5");
+            break;
+        case 6:
+            ROS_INFO("ROBOT_MODE_AUTOMATIC_ERROR_RECOVERY=6");
+            break;
+        }
+    }
+}
+
+bool DmpVelocityController::errorRecovery(){
+    actionlib::SimpleActionClient<franka_control::ErrorRecoveryAction> tempClient("/franka_control/error_recovery/", true);
+    tempClient.waitForServer();
+    franka_control::ErrorRecoveryGoal goalRecovery;
+    tempClient.sendGoal(goalRecovery);
+    tempClient.waitForResult(ros::Duration(1.0));
+    if (tempClient.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
+        ROS_INFO("error recovery successfull");
+        return true;
+    }
+    else
+    {
+        ROS_INFO("error recovery unsuccessfull");
+        return false;
+    }
 }
 
 void DmpVelocityController::checkStoppingCondition(){
@@ -229,14 +281,17 @@ void DmpVelocityController::stopping(const ros::Time& /*time*/) {
     // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
     pubBatch.publish(ctBatch);
     ROS_INFO("DmpVelocityController: batch size published: #%d", ctBatch.samples.size());
+    refIter = -1;
 }
 
 //TODO: adapt to react to a change of the coupling term as a topic
 void DmpVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
-    if (!flagPubEx) {
-        std::vector<double> currQ = dmp.getY();
+    // do not listen, when the controller is done (flagPubEx) or when it is not actie (refIter =-1)
+    if (!flagPubEx && refIter >= 0) {
+
         if (refIter > 0 && !firstCB)
         {
+            std::vector<double> currQ = dmp.getY();
             for (int i=0; i<dofs; i++)
             {
                 if (refIter-1 > refQ.size())
@@ -255,6 +310,7 @@ void DmpVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr
         ctSample.mask = 0;
         ctSample.reward = 0.0;
         ctSample.ct = *msg;
+
         firstCB = false;
     }
 
@@ -262,6 +318,10 @@ void DmpVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr
 void DmpVelocityController::ctSmoothedCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
     std::vector<double> coupling(msg->data.begin(),msg->data.end());
     dmp.setCouplingTerm(coupling);
+}
+
+void DmpVelocityController::frankaStateCallback(const franka_msgs::FrankaState::ConstPtr& msg) {
+    currentRobotMode = msg->robot_mode;
 }
 
 

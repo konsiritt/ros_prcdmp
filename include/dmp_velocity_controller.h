@@ -11,10 +11,14 @@
 #include <hardware_interface/robot_hw.h>
 #include <ros/node_handle.h>
 #include <ros/time.h>
+#include <actionlib/client/simple_action_client.h>
+#include <franka_control/ErrorRecoveryAction.h>
+
 #include "std_msgs/Bool.h"
 #include "common_msgs/CouplingTerm.h"
 #include "common_msgs/MDPSample.h"
 #include "common_msgs/SamplesBatch.h"
+#include "franka_msgs/FrankaState.h"
 
 #include "UTILS/Config.h"
 #include <string>
@@ -52,6 +56,8 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
 
   bool checkRobotInit();
 
+  void checkRobotState();
+
   void checkStoppingCondition();
 
   void commandRobot(const std::vector<double> &dq);
@@ -79,15 +85,21 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   std::array<double,7> qInit;
   std::string robotIp;
   std::vector<std::vector<double>> refQ;
-  int refIter=0;
+  int refIter=-1;
   bool firstCB = true;
 
 
   // dummy (for now) callback function reacting to boolean input
   void ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg);
   void ctSmoothedCallback(const common_msgs::CouplingTerm::ConstPtr& msg);
+  void frankaStateCallback(const franka_msgs::FrankaState::ConstPtr& msg);
   ros::Subscriber subCoupling;
   ros::Subscriber subCouplingSmoothed;
+  ros::Subscriber subFrankaStates;
+
+  uint8_t currentRobotMode;
+
+  bool errorRecovery();
 
   common_msgs::SamplesBatch ctBatch;
   common_msgs::MDPSample ctSample;
