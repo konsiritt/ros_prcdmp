@@ -12,7 +12,6 @@
 #include <ros/node_handle.h>
 #include <ros/time.h>
 #include <actionlib/client/simple_action_client.h>
-#include <franka_control/ErrorRecoveryAction.h>
 
 #include "std_msgs/Bool.h"
 #include "common_msgs/CouplingTerm.h"
@@ -31,11 +30,14 @@
 #include <franka/robot_state.h>
 #include <franka/model.h>
 #include <franka/exception.h>
+#include <franka_control/ErrorRecoveryAction.h>
+#include <franka_hw/franka_model_interface.h>
 
 namespace prcdmp_node {
 
 class DmpVelocityController : public controller_interface::MultiInterfaceController<
                                            hardware_interface::VelocityJointInterface,
+                                           franka_hw::FrankaModelInterface,
                                            franka_hw::FrankaStateInterface> {
  public:
   bool init(hardware_interface::RobotHW* robot_hardware, ros::NodeHandle& node_handle) override;
@@ -62,12 +64,16 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
 
   void commandRobot(const std::vector<double> &dq);
 
+  bool isValidVelocity(std::vector<double> velocitiesToApply);
+
   hardware_interface::VelocityJointInterface* velocity_joint_interface_;
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
   ros::Duration elapsedTime;
 
   // handle for robot hardware (not sure if safe?)
   hardware_interface::RobotHW* robotHardware;
+  franka_hw::FrankaModelInterface* modelInterface;
+  std::unique_ptr<franka_hw::FrankaModelHandle> modelHandle;
 
   // handle for ROS node (communication, maybe not the best idea - performance?)
   ros::NodeHandle* nodeHandle;
@@ -88,6 +94,10 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   int refIter=-1;
   bool firstCB = true;
 
+  double virtWallZ_EE = 0.10;// virtual wall for end effector height in 0_T
+  double virtWallZ_F = 0.15;// virtual wall for end effector height in 0_T
+  double virtWallZ_J7 = 0.15;// virtual wall for end effector height in 0_T
+  double virtWallZ_J6 = 0.15;// virtual wall for end effector height in 0_T
 
   // dummy (for now) callback function reacting to boolean input
   void ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg);
@@ -106,6 +116,7 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
 
   // publisher for execution status flag
   ros::Publisher pubExec;
+  ros::Publisher pubError;
   ros::Publisher pubBatch;
 
   bool flagPubEx  = false;

@@ -47,6 +47,7 @@ bool DmpVelocityController::init(hardware_interface::RobotHW* robot_hardware,
 
 void DmpVelocityController::initROSCommunication(){
     pubExec = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_exec", 10);
+    pubError = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/error_occured", 10);
     pubBatch = nodeHandle->advertise<common_msgs::SamplesBatch>("/prcdmp/episodic_batch", 10);
 
     // subscriber that handles changes to the dmp coupling term: TODO: change to coupling term
@@ -65,15 +66,15 @@ bool DmpVelocityController::checkRobotSetup(){
     velocity_joint_interface_ = robotHardware->get<hardware_interface::VelocityJointInterface>();
     if (velocity_joint_interface_ == nullptr) {
         ROS_ERROR(
-                    "DmpCtVelocityController: Error getting velocity joint interface from hardware!");
+                    "DmpVelocityController: Error getting velocity joint interface from hardware!");
         return false;
     }
     std::vector<std::string> joint_names;
     if (!nodeHandle->getParam("joint_names", joint_names)) {
-        ROS_ERROR("DmpCtVelocityController: Could not parse joint names");
+        ROS_ERROR("DmpVelocityController: Could not parse joint names");
     }
     if (joint_names.size() != 7) {
-        ROS_ERROR_STREAM("DmpCtVelocityController: Wrong number of joint names, got "
+        ROS_ERROR_STREAM("DmpVelocityController: Wrong number of joint names, got "
                          << joint_names.size() << " instead of 7 names!");
         return false;
     }
@@ -83,20 +84,49 @@ bool DmpVelocityController::checkRobotSetup(){
             velocity_joint_handles_[i] = velocity_joint_interface_->getHandle(joint_names[i]);
         } catch (const hardware_interface::HardwareInterfaceException& ex) {
             ROS_ERROR_STREAM(
-                        "DmpCtVelocityController: Exception getting joint handles: " << ex.what());
+                        "DmpVelocityController: Exception getting joint handles: " << ex.what());
             return false;
         }
     }
     auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
     if (state_interface == nullptr) {
-        ROS_ERROR("DmpCtVelocityController: Could not get state interface from hardware");
+        ROS_ERROR("DmpVelocityController: Could not get state interface from hardware");
         return false;
     }
 
     if (!nodeHandle->getParam("/franka_control/robot_ip", robotIp)) {
-        ROS_ERROR("Invalid or no robot_ip parameter provided");
+        ROS_ERROR("DmpVelocityController: Invalid or no robot_ip parameter provided");
         return false;
     }
+
+    modelInterface = robotHardware->get<franka_hw::FrankaModelInterface>();
+    if (modelInterface == nullptr) {
+      ROS_ERROR_STREAM("DmpVelocityController: Error getting model interface from hardware");
+      for (int retry = 0; retry <60; retry++) {
+          modelInterface = robotHardware->get<franka_hw::FrankaModelInterface>();
+          if (modelInterface == nullptr) {
+            ROS_ERROR_STREAM("DmpVelocityController: Error getting model interface from hardware");
+          }
+          else break;
+      }
+      return false;
+    }
+
+    std::string armId;
+    if (!nodeHandle->getParam("arm_id", armId)) {
+      ROS_ERROR("DmpVelocityController: Could not read parameter arm_id");
+      return false;
+    }
+
+    try {
+      modelHandle = std::make_unique<franka_hw::FrankaModelHandle>(
+          modelInterface->getHandle(armId + "_model"));
+    } catch (hardware_interface::HardwareInterfaceException& ex) {
+      ROS_ERROR_STREAM(
+          "DmpVelocityController: Exception getting model handle from interface: " << ex.what());
+      return false;
+    }
+
     return true;
 }
 
@@ -205,6 +235,8 @@ void DmpVelocityController::update(const ros::Time& /* time */,
 
     checkStoppingCondition();
 
+    isValidVelocity(dq);
+
     commandRobot(dq);
 }
 
@@ -218,9 +250,12 @@ void DmpVelocityController::checkRobotState() {
             ROS_INFO("ROBOT_MODE_GUIDING=3");
             break;
         case 4:
-            ROS_INFO("ROBOT_MODE_REFLEX=4: Attempting error recovery!");
+            ROS_INFO("ROBOT_MODE_REFLEX=4: Attempting error recovery!");            
             if (errorRecovery())
             {
+                std_msgs::Bool msg;
+                msg.data = true;
+                pubError.publish(msg);
                 ROS_INFO("error recovery successful");
             };
             break;
@@ -324,6 +359,52 @@ void DmpVelocityController::frankaStateCallback(const franka_msgs::FrankaState::
     currentRobotMode = msg->robot_mode;
 }
 
+bool DmpVelocityController::isValidVelocity(std::vector<double> velocitiesToApply) {
+    // check for initial joint positions of the robot
+    auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
+    if (state_interface == nullptr) {
+        ROS_ERROR("DmpVelocityController: Could not get state interface from hardware when checking velocities");
+    }
+    std::array<double, 7> currentPos;
+    std::array<double, 16> F_T_EE;
+    std::array<double, 16> EE_T_K;
+    std::array<double, 16> futurePosEnd;
+    std::array<double, 16> futurePosFlange;
+    std::array<double, 16> futurePosJoint7;
+    std::array<double, 16> futurePosJoint6;
+
+    try {
+        auto state_handle = state_interface->getHandle("panda_robot");
+
+        currentPos = state_handle.getRobotState().q_d;
+        F_T_EE = state_handle.getRobotState().F_T_EE;
+        EE_T_K = state_handle.getRobotState().EE_T_K;
+
+    } catch (const hardware_interface::HardwareInterfaceException& e) {
+        ROS_ERROR_STREAM(
+                    "DmpVelocityController: Exception getting state handle: " << e.what());
+        return false;
+    }
+
+    for(int i = 0; i < dofs; i++)
+    {
+      currentPos[i] += velocitiesToApply[i]/1000.0;
+    }
+    futurePosEnd = modelHandle->getPose(franka::Frame::kEndEffector, currentPos, F_T_EE, EE_T_K);
+    futurePosFlange = modelHandle->getPose(franka::Frame::kFlange, currentPos, F_T_EE, EE_T_K);
+    futurePosJoint7 = modelHandle->getPose(franka::Frame::kJoint7, currentPos, F_T_EE, EE_T_K);
+    futurePosJoint6 = modelHandle->getPose(franka::Frame::kJoint6, currentPos, F_T_EE, EE_T_K);
+
+    // check cartesian position of End effector with virtual wall height of tabletop
+    if (futurePosEnd[14] < virtWallZ_EE || futurePosFlange[14] < virtWallZ_F || futurePosJoint7[14] < virtWallZ_J7 || futurePosJoint6[14] < virtWallZ_J6){
+        std_msgs::Bool msg;
+        msg.data = true;
+        pubError.publish(msg);
+        ROS_INFO("DmpVelocityController: virtual wall hit");
+    }
+
+    return true;
+}
 
 }  // namespace prcdmp_node
 

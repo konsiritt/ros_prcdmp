@@ -9,6 +9,7 @@ dmp_velocity_example_controller:
         - panda_joint6
         - panda_joint7
 dmp_velocity_controller:
+    arm_id: panda
     type: prcdmp_node/DmpVelocityController
     joint_names:
         - panda_joint1
