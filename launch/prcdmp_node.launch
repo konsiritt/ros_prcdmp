@@ -13,6 +13,7 @@
   <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen"  args="dmpstart_velocity_controller"/>
   <param name="dmp_velocity_controller/data_set" value="$(arg data_set)" type="str" />
   <node name="controller_spawner_stopped" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--stopped dmp_velocity_controller"/>
+  <node name="controller_spawner_via_stopped" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--stopped dmpviap_controller"/>
   <!--
   <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find franka_example_controllers)/launch/robot.rviz"/> -->
 </launch>

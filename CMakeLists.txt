@@ -48,6 +48,7 @@ add_library(prcdmp_node
   src/dmpstart_velocity_controller.cpp
   src/dmp_velocity_controller.cpp
   src/dmp_ct_velocity_controller.cpp
+  src/dmpviap_controller.cpp
 )
 
 #temporary

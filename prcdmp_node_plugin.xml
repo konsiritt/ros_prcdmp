@@ -23,6 +23,14 @@
     </description>
   </class>
 
+  <class name="prcdmp_node/DmpViapController"
+         type="prcdmp_node::DmpViapController"
+         base_class_type="controller_interface::ControllerBase">
+    <description>
+         A controller that moves the robot into a hard coded via point position
+    </description>
+  </class>
+
   <class name="prcdmp_node/DmpCtVelocityController"
          type="prcdmp_node::DmpCtVelocityController"
          base_class_type="controller_interface::ControllerBase">
