@@ -37,9 +37,27 @@ class DmpViapController : public controller_interface::MultiInterfaceController<
   void stopping(const ros::Time&) override;
 
  private:
+  void initROSCommunication();
+
+  bool checkRobotSetup();
+
+  bool loadDmpData(int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
+                   std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB);
+  // sets qInit to the current robot state
+  bool getRobotState();
+
+  void initDmpObjects(double &dt, std::vector<double> &y0v, std::vector<double> &goalv,
+                      std::vector<double> &gainA, std::vector<double> &gainB);
+
+  bool checkRobotInit();
+
+  void checkStoppingCondition();
+
+  void commandRobot(const std::vector<double> &dq);
+
   hardware_interface::VelocityJointInterface* velocity_joint_interface_;
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
-  ros::Duration elapsed_time_;
+  ros::Duration elapsedTime;
 
   // handle for robot hardware (not sure if safe?)
   hardware_interface::RobotHW* robotHardware;
@@ -47,14 +65,16 @@ class DmpViapController : public controller_interface::MultiInterfaceController<
   // handle for ROS node (communication, maybe not the best idea - performance?)
   ros::NodeHandle* nodeHandle;
 
+  int dofs;
   // dmp class
   DiscreteDMP dmpInitialize;
+  double timeSpan = 3.5;// for initializing the timespan can be shorter
   // time scaling factor: tau<1 -> slower execution
   double tau; 
   std::vector<double> externalForce;
 
   // initial joint position in the dmp
-  std::vector<double> q0v;
+  std::vector<double> dmpQ0;
   // current joint position of the robot
   std::array<double,7> qInit;
   // safe via point for recovery after passing the obstacle
@@ -67,7 +87,7 @@ class DmpViapController : public controller_interface::MultiInterfaceController<
   // flag wheter or not the target dmp is being executed
   bool executingDMP = false;
 
-  bool tempPublished  = false;
+  bool flagPubEx  = false;
 
   ros::Publisher pub;
 };

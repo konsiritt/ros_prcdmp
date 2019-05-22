@@ -122,7 +122,7 @@ bool DmpStartVelocityController::checkRobotInit() {
     for (size_t i = 0; i < dofs; i++) {
         if (std::abs(qInit[i] - dmpQ0[i]) > 0.05) { //TODO: is this a good threshold?
             ROS_ERROR_STREAM(
-                        "DmpVelocityController: Robot is not in the expected starting position for "
+                        "DmpStartVelocityController: Robot is not in the expected starting position for "
                         "this dmp.");
 
             //TODO: how to know, we are not running this controller? difference between loading and starting...
@@ -136,7 +136,7 @@ bool DmpStartVelocityController::getRobotState(){
     // check for initial joint positions of the robot
     auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
     if (state_interface == nullptr) {
-        ROS_ERROR("DmpVelocityController: Could not get state interface from hardware when starting the controller");
+        ROS_ERROR("DmpStartVelocityController: Could not get state interface from hardware when starting the controller");
     }
     try {
         auto state_handle = state_interface->getHandle("panda_robot");
@@ -146,7 +146,7 @@ bool DmpStartVelocityController::getRobotState(){
         }
     } catch (const hardware_interface::HardwareInterfaceException& e) {
         ROS_ERROR_STREAM(
-                    "DmpVelocityController: Exception getting state handle: " << e.what());
+                    "DmpStartVelocityController: Exception getting state handle: " << e.what());
         return false;
     }
     return true;
@@ -157,6 +157,7 @@ void DmpStartVelocityController::initDmpObjects( double &dt, std::vector<double>
                                            std::vector<double> &gainA, std::vector<double> &gainB) {
     dmpInitialize = DiscreteDMP(dofs, dt, initialPosition, goalPosition, gainA, gainB);
 }
+
 void DmpStartVelocityController::starting(const ros::Time& /* time */) {
   ROS_INFO("DmpStartVelocityController: starting()");
   //assume initialization 
