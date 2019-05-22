@@ -155,7 +155,6 @@ void DmpViapController::starting(const ros::Time& /* time */) {
   std::vector<double> qInitV(qInit.begin(), qInit.end());
   dmpInitialize.setInitialPosition(qInitV); // also initializes the dmp trajectory (resetting the canonical sytem)
 
-  std::vector<double> viaPointQ = {0.57189,0.293397,0.392036,-1.20435,1.32246,2.51705,-0.55729};
   dmpInitialize.setFinalPosition(viaPointQ);
 
   dmpInitialize.resettState();

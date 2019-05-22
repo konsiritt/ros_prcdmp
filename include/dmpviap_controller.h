@@ -57,6 +57,9 @@ class DmpViapController : public controller_interface::MultiInterfaceController<
   std::vector<double> q0v;
   // current joint position of the robot
   std::array<double,7> qInit;
+  // safe via point for recovery after passing the obstacle
+  std::vector<double> viaPointQ = {0.57189,0.293397,0.392036,-1.20435,1.32246,2.51705,-0.55729};
+
   std::string robotIp;
 
   // flag whether or not moving to start is necessary

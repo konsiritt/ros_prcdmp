@@ -86,7 +86,7 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   std::vector<double> externalForce;
 
   // initial joint position in the dmp
-  std::array<double,7> q0;
+  std::array<double,7> dmpQ0;
   // current joint position of the robot
   std::array<double,7> qInit;
   std::string robotIp;

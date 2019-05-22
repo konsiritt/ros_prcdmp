@@ -136,7 +136,7 @@ bool DmpVelocityController::loadDmpData(int &nBFs, double &dt, std::vector<doubl
     //----------------------load DMP specific config data from files----------------------
     std::string datasetPath;
     if (!nodeHandle->getParam("/dmp_velocity_controller/data_set", datasetPath)) {
-        ROS_ERROR("DmpCtVelocityController: Invalid or no data_set parameter provided; provide e.g. data_set:=set1");
+        ROS_ERROR("DmpVelocityController: Invalid or no data_set parameter provided; provide e.g. data_set:=set1");
         return false;
     }
     //-------handles config file access----------------------
@@ -144,7 +144,7 @@ bool DmpVelocityController::loadDmpData(int &nBFs, double &dt, std::vector<doubl
     Config config(datasetPath, basePackagePath);
     //------fill data from json to variables----------------------
     dofs = config.getDmpJson()["dofs"].asInt();
-    std::cout<<"DmpCtVelocityController: DOFs: "<<dofs<<std::endl;
+    std::cout<<"DmpVelocityController: DOFs: "<<dofs<<std::endl;
     nBFs = config.getDmpJson()["n_basis"].asInt();
     dt = config.getDmpJson()["dt"].asDouble();
     double timeSpan = config.getDmpJson()["timespan"].asDouble();
@@ -156,7 +156,7 @@ bool DmpVelocityController::loadDmpData(int &nBFs, double &dt, std::vector<doubl
     moveJsonArrayToVec(config.getDmpJson()["gain_b"], gainB);
     //------fill data from json to variables----------------------
     int episodeNr = config.getDataJson()["current_episode"].asInt()-1;
-    ROS_INFO("DmpCtVelocityController: executing episode #%d",episodeNr);
+    ROS_INFO("DmpVelocityController: executing episode #%d",episodeNr);
     config.fillTrajectoryPath(episodeNr);
     if (episodeNr ==0) {
         UTILS::loadWeights(config.getInitialWPath(),w);
@@ -184,10 +184,10 @@ bool DmpVelocityController::checkRobotInit() {
     try {
         auto state_handle = state_interface->getHandle("panda_robot");
 
-        for (size_t i = 0; i < q0.size(); i++) {
+        for (size_t i = 0; i < dmpQ0.size(); i++) {
             qInit[i] = state_handle.getRobotState().q_d[i];
             // if only just one joint is not close enough to q0, assume robot is not initialized
-            if (std::abs(qInit[i] - q0[i]) > 0.05) { //TODO: is this a good threshold?
+            if (std::abs(qInit[i] - dmpQ0[i]) > 0.05) { //TODO: is this a good threshold?
                 ROS_ERROR_STREAM(
                             "DmpVelocityController: Robot is not in the expected starting position for "
                             "this dmp.");
@@ -291,7 +291,7 @@ void DmpVelocityController::checkStoppingCondition(){
     if (dmp.getTrajFinished()) {
         //publish the changed states to a topic so that the controller_manager can switch controllers
         if (!flagPubEx) {
-            ROS_INFO("DmpCtVelocityController: finished the target trajectory after time[s]: [%f]", elapsedTime.toSec());
+            ROS_INFO("DmpVelocityController: finished the target trajectory after time[s]: [%f]", elapsedTime.toSec());
             std_msgs::Bool msg;
             msg.data = false;
             pubExec.publish(msg);
