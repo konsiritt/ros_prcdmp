@@ -3,6 +3,7 @@
 #include <dmpstart_velocity_controller.h>
 
 #include <cmath>
+#include <chrono>
 
 #include <controller_interface/controller_base.h>
 #include <hardware_interface/hardware_interface.h>
@@ -36,12 +37,19 @@ bool DmpStartVelocityController::init(hardware_interface::RobotHW* robot_hardwar
   std_msgs::Bool msg;
   msg.data = notInitializedDMP;
   pub.publish(msg);
+
+  setupSampling();
   return true;
 }
 
 void DmpStartVelocityController::initROSCommunication(){
     // publisher to send end of initialization signal
     pub = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_notInit", 10);
+
+    if (!nodeHandle->getParam("/dmp_velocity_controller/std_offset_q0", stdOffset)) {
+      ROS_ERROR("DmpStartVelocityController: Invalid or no std_offset_q0 parameter provided; provide e.g. std_offset_q0:=0.05");
+    }
+
 }
 
 bool DmpStartVelocityController::checkRobotSetup(){
@@ -124,7 +132,6 @@ bool DmpStartVelocityController::checkRobotInit() {
             ROS_ERROR_STREAM(
                         "DmpStartVelocityController: Robot is not in the expected starting position for "
                         "this dmp.");
-
             //TODO: how to know, we are not running this controller? difference between loading and starting...
             return false;
         }
@@ -159,21 +166,25 @@ void DmpStartVelocityController::initDmpObjects( double &dt, std::vector<double>
 }
 
 void DmpStartVelocityController::starting(const ros::Time& /* time */) {
-  ROS_INFO("DmpStartVelocityController: starting()");
-  //assume initialization 
-  notInitializedDMP = false;
-  flagPubEx = false;
+    ROS_INFO("DmpStartVelocityController: starting()");
+    //assume initialization
+    notInitializedDMP = false;
+    flagPubEx = false;
 
-  getRobotState();
-  // adapt the dmp to the initial joint positions of the robot
-  std::vector<double> qInitV(qInit.begin(), qInit.end());
-  dmpInitialize.setInitialPosition(qInitV); // also initializes the dmp trajectory (resetting the canonical sytem)
+    getRobotState();
+    // adapt the dmp to the initial joint positions of the robot
+    std::vector<double> qInitV(qInit.begin(), qInit.end());
+    std::vector<double> offsetInitV = getRandomVectorOffset();
+    //  std::cout<<"current offset for all joints: "<<offsetInitV[0]<<", "<<offsetInitV[1]<<", "<<offsetInitV[2]<<", "<<std::endl;
+    std::vector<double> qInitWithOffsetV = addVectors(qInitV,offsetInitV);
+    dmpInitialize.setInitialPosition(qInitWithOffsetV); // also initializes the dmp trajectory (resetting the canonical sytem)
+    dmpInitialize.resettState();
 
-  elapsedTime = ros::Duration(0.0);
+    elapsedTime = ros::Duration(0.0);
 }
 
 void DmpStartVelocityController::update(const ros::Time& /* time */,
-                                            const ros::Duration& period) {
+                                        const ros::Duration& period) {
   elapsedTime += period;
 
   std::vector<double> dq(7,0.0000001);
@@ -208,6 +219,30 @@ void DmpStartVelocityController::commandRobot(const std::vector<double> &dq){
         joint_handle.setCommand(omega);
         it++;
     }
+}
+
+void DmpStartVelocityController::setupSampling(){
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    generator = std::default_random_engine (seed);
+    distribution = std::normal_distribution<double>(meanOffset,stdOffset);
+}
+
+std::vector <double> DmpStartVelocityController::getRandomVectorOffset(){
+    std::vector<double> randomVector(7,0.0);
+    for (int iterate=0; iterate<dofs; iterate++){
+        randomVector[iterate] = distribution(generator);
+        std::cout<<"random value="<<randomVector[iterate]<<" with sigma="<<stdOffset<<std::endl;
+    }
+    return randomVector;
+}
+
+std::vector<double> DmpStartVelocityController::addVectors(const std::vector<double> &element1, const std::vector<double> &element2){
+    assert(element1.size() == element2.size());
+    std::vector<double> returnVector(element1.size(),0.0);
+    for (int iterator=0; iterator < element1.size(); iterator++) {
+        returnVector[iterator] = element1[iterator] + element2[iterator];
+    }
+    return returnVector;
 }
 
 void DmpStartVelocityController::stopping(const ros::Time& /*time*/) {

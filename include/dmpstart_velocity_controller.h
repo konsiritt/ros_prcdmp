@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include <random>
 
 #include <controller_interface/multi_interface_controller.h>
 #include <franka_hw/franka_state_interface.h>
@@ -55,6 +56,10 @@ class DmpStartVelocityController : public controller_interface::MultiInterfaceCo
 
   void commandRobot(const std::vector<double> &dq);
 
+  void setupSampling();
+  std::vector<double> getRandomVectorOffset();
+  std::vector<double> addVectors(const std::vector<double>& element1, const std::vector<double>& element2);
+
   hardware_interface::VelocityJointInterface* velocity_joint_interface_;
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
   ros::Duration elapsedTime;
@@ -87,6 +92,12 @@ class DmpStartVelocityController : public controller_interface::MultiInterfaceCo
   bool flagPubEx  = false;
 
   ros::Publisher pub;
+
+  //include random generator to sample initial position
+  std::default_random_engine generator;
+  std::normal_distribution<double> distribution;
+  double meanOffset = 0.0;
+  double stdOffset = 0.05;
 };
 
 }  // namespace prcdmp_node
