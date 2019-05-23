@@ -40,7 +40,8 @@ bool DmpVelocityController::init(hardware_interface::RobotHW* robot_hardware,
     refDQ.clear();
     refDDQ.clear();
 
-    if (!checkRobotInit()) {return false;}
+    getRobotState();
+    //if (!checkRobotInit()) {return false;}
 
     return true;
 }
@@ -176,29 +177,36 @@ void DmpVelocityController::initDmpObjects(int &nBFs, double &dt, std::vector<do
 }
 
 bool DmpVelocityController::checkRobotInit() {
+    getRobotState();
+
+    for (size_t i = 0; i < dofs; i++) {
+        // if only just one joint is not close enough to q0, assume robot is not initialized
+        if (std::abs(qInit[i] - dmpQ0[i]) > 0.05) { //TODO: is this a good threshold?
+            ROS_ERROR_STREAM(
+                        "DmpVelocityController: Robot is not in the expected starting position for "
+                        "this dmp.");
+            //TODO: how to know, we are not running this controller? difference between loading and starting...
+            return false;
+        }
+    }
+    return true;
+}
+
+bool DmpVelocityController::getRobotState(){
     // check for initial joint positions of the robot
     auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
     if (state_interface == nullptr) {
-        ROS_ERROR("DmpVelocityController: Could not get state interface from hardware when starting the controller");
+        ROS_ERROR("DmpViapController: Could not get state interface from hardware when starting the controller");
     }
     try {
         auto state_handle = state_interface->getHandle("panda_robot");
 
-        for (size_t i = 0; i < dmpQ0.size(); i++) {
+        for (size_t i = 0; i < dofs; i++) {
             qInit[i] = state_handle.getRobotState().q_d[i];
-            // if only just one joint is not close enough to q0, assume robot is not initialized
-            if (std::abs(qInit[i] - dmpQ0[i]) > 0.05) { //TODO: is this a good threshold?
-                ROS_ERROR_STREAM(
-                            "DmpVelocityController: Robot is not in the expected starting position for "
-                            "this dmp.");
-
-                //TODO: how to know, we are not running this controller? difference between loading and starting...
-                //return false;
-            }
         }
     } catch (const hardware_interface::HardwareInterfaceException& e) {
         ROS_ERROR_STREAM(
-                    "DmpVelocityController: Exception getting state handle: " << e.what());
+                    "DmpViapController: Exception getting state handle: " << e.what());
         return false;
     }
     return true;
@@ -212,7 +220,8 @@ void DmpVelocityController::starting(const ros::Time& /* time */) {
     flagPubEx = false;
     refIter = 0;
 
-    checkRobotInit();
+//    checkRobotInit();
+    getRobotState();
 
     // create new MDPbatch
     ctBatch.samples.clear();

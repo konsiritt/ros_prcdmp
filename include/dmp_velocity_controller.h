@@ -59,6 +59,8 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   bool checkRobotInit();
 
   void checkRobotState();
+  // sets qInit to the current robot state
+  bool getRobotState();
 
   void checkStoppingCondition();
 
