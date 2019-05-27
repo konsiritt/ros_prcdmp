@@ -42,6 +42,38 @@ bool DmpStartVelocityController::init(hardware_interface::RobotHW* robot_hardwar
   return true;
 }
 
+void DmpStartVelocityController::starting(const ros::Time& /* time */) {
+    ROS_INFO("DmpStartVelocityController: starting()");
+    //assume initialization
+    notInitializedDMP = false;
+    flagPubEx = false;
+
+    getRobotState();
+
+    sampleInitalQ();
+
+    elapsedTime = ros::Duration(0.0);
+}
+
+void DmpStartVelocityController::update(const ros::Time& /* time */,
+                                        const ros::Duration& period) {
+  elapsedTime += period;
+
+  std::vector<double> dq(7,0.0000001);
+
+  dq = dmpInitialize.simpleStep(externalForce, tau);
+
+  checkStoppingCondition();
+
+  commandRobot(dq);
+}
+
+void DmpStartVelocityController::stopping(const ros::Time& /*time*/) {
+  // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
+  // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
+  // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
+}
+
 void DmpStartVelocityController::initROSCommunication(){
     // publisher to send end of initialization signal
     pub = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_notInit", 10);
@@ -123,22 +155,6 @@ bool DmpStartVelocityController::loadDmpData(int &nBFs, double &dt, std::vector<
     return true;
 }
 
-bool DmpStartVelocityController::checkRobotInit() {
-    // check for initial joint positions of the robot
-    getRobotState();
-
-    for (size_t i = 0; i < dofs; i++) {
-        if (std::abs(qInit[i] - dmpQ0[i]) > 0.05) { //TODO: is this a good threshold?
-            ROS_ERROR_STREAM(
-                        "DmpStartVelocityController: Robot is not in the expected starting position for "
-                        "this dmp.");
-            //TODO: how to know, we are not running this controller? difference between loading and starting...
-            return false;
-        }
-    }
-    return true;
-}
-
 bool DmpStartVelocityController::getRobotState(){
     // check for initial joint positions of the robot
     auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
@@ -165,35 +181,20 @@ void DmpStartVelocityController::initDmpObjects( double &dt, std::vector<double>
     dmpInitialize = DiscreteDMP(dofs, dt, initialPosition, goalPosition, gainA, gainB);
 }
 
-void DmpStartVelocityController::starting(const ros::Time& /* time */) {
-    ROS_INFO("DmpStartVelocityController: starting()");
-    //assume initialization
-    notInitializedDMP = false;
-    flagPubEx = false;
-
+bool DmpStartVelocityController::checkRobotInit() {
+    // check for initial joint positions of the robot
     getRobotState();
-    // adapt the dmp to the initial joint positions of the robot
-    std::vector<double> qInitV(qInit.begin(), qInit.end());
-    std::vector<double> offsetInitV = getRandomVectorOffset();
-    //  std::cout<<"current offset for all joints: "<<offsetInitV[0]<<", "<<offsetInitV[1]<<", "<<offsetInitV[2]<<", "<<std::endl;
-    std::vector<double> qInitWithOffsetV = addVectors(qInitV,offsetInitV);
-    dmpInitialize.setInitialPosition(qInitWithOffsetV); // also initializes the dmp trajectory (resetting the canonical sytem)
-    dmpInitialize.resettState();
 
-    elapsedTime = ros::Duration(0.0);
-}
-
-void DmpStartVelocityController::update(const ros::Time& /* time */,
-                                        const ros::Duration& period) {
-  elapsedTime += period;
-
-  std::vector<double> dq(7,0.0000001);
-
-  dq = dmpInitialize.simpleStep(externalForce, tau);
-
-  checkStoppingCondition();
-  
-  commandRobot(dq);
+    for (size_t i = 0; i < dofs; i++) {
+        if (std::abs(qInit[i] - dmpQ0[i]) > 0.05) { //TODO: is this a good threshold?
+            ROS_ERROR_STREAM(
+                        "DmpStartVelocityController: Robot is not in the expected starting position for "
+                        "this dmp.");
+            //TODO: how to know, we are not running this controller? difference between loading and starting...
+            return false;
+        }
+    }
+    return true;
 }
 
 void DmpStartVelocityController::checkStoppingCondition(){
@@ -244,10 +245,13 @@ std::vector<double> DmpStartVelocityController::addVectors(const std::vector<dou
     return returnVector;
 }
 
-void DmpStartVelocityController::stopping(const ros::Time& /*time*/) {
-  // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
-  // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
-  // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
+void DmpStartVelocityController::sampleInitalQ() {
+    // adapt the dmp to the initial joint positions of the robot
+    std::vector<double> qInitV(qInit.begin(), qInit.end());
+    std::vector<double> offsetInitV = getRandomVectorOffset();
+    std::vector<double> qInitWithOffsetV = addVectors(qInitV,offsetInitV);
+    dmpInitialize.setInitialPosition(qInitWithOffsetV); // also initializes the dmp trajectory (resetting the canonical sytem)
+    dmpInitialize.resettState();
 }
 
 }  // namespace prcdmp_node

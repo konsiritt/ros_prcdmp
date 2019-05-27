@@ -59,6 +59,7 @@ class DmpStartVelocityController : public controller_interface::MultiInterfaceCo
   void setupSampling();
   std::vector<double> getRandomVectorOffset();
   std::vector<double> addVectors(const std::vector<double>& element1, const std::vector<double>& element2);
+  void sampleInitalQ();
 
   hardware_interface::VelocityJointInterface* velocity_joint_interface_;
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
