@@ -33,10 +33,10 @@ bool DmpStartVelocityController::init(hardware_interface::RobotHW* robot_hardwar
   std::vector<double> robotQ0(qInit.begin(), qInit.end());
   initDmpObjects(dt, robotQ0, initialPosition, gainA, gainB);
 
-  // publish, so that the state of the robot (initialized or not) is known to the manager
-  std_msgs::Bool msg;
-  msg.data = notInitializedDMP;
-  pub.publish(msg);
+//  // publish, so that the state of the robot (initialized or not) is known to the manager
+//  std_msgs::Bool msg;
+//  msg.data = notInitializedDMP;
+//  pub.publish(msg);
 
   setupSampling();
   return true;
@@ -231,7 +231,6 @@ std::vector <double> DmpStartVelocityController::getRandomVectorOffset(){
     std::vector<double> randomVector(7,0.0);
     for (int iterate=0; iterate<dofs; iterate++){
         randomVector[iterate] = distribution(generator);
-        std::cout<<"random value="<<randomVector[iterate]<<" with sigma="<<stdOffset<<std::endl;
     }
     return randomVector;
 }
