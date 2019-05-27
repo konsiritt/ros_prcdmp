@@ -33,8 +33,11 @@ bool DmpVelocityController::init(hardware_interface::RobotHW* robot_hardware,
     //----------------------initialize dmp runtime object----------------------
     initDmpObjects(nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
 
-    // unroll dmp in refQ, resetState for DMP
+    for (int iter=0;iter<dmpGoal.size();iter++){
+        dmpGoal[iter] = goalPosition[iter];
+    }
 
+    // unroll dmp in refQ, resetState for DMP
     std::vector<std::vector<double>> refDQ, refDDQ;
     dmp.rollout(refQ, refDQ, refDDQ,externalForce,tau, -1, 0);
     refDQ.clear();
@@ -43,7 +46,59 @@ bool DmpVelocityController::init(hardware_interface::RobotHW* robot_hardware,
     getRobotState();
     //if (!checkRobotInit()) {return false;}
 
+    setupSampling();
     return true;
+}
+
+void DmpVelocityController::starting(const ros::Time& /* time */) {
+    ROS_INFO("DmpVelocityController: including ct: starting()");
+    // initialize the dmp trajectory (resetting the canonical sytem)
+    dmp.resettState();
+    //assume initialization
+    flagPubEx = false;
+    refIter = 0;
+
+//    checkRobotInit();
+    getRobotState();
+
+    sampleGoalQ();
+
+    // create new MDPbatch
+    ctBatch.samples.clear();
+    ctBatch.goal = dmpGoal;
+
+    firstCB = true;
+
+    elapsedTime = ros::Duration(0.0);
+}
+
+void DmpVelocityController::update(const ros::Time& /* time */,
+                                   const ros::Duration& period) {
+    elapsedTime += period;
+
+    std::vector<double> dq(7,0.0000001);
+
+    dq = dmp.step(externalForce, tau);
+    refIter++;
+
+    checkRobotState();
+
+    checkStoppingCondition();
+
+    isValidVelocity(dq);
+
+    commandRobot(dq);
+}
+
+void DmpVelocityController::stopping(const ros::Time& /*time*/) {
+    // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
+    // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
+    // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
+    if (ctBatch.samples.size() > 30){
+        pubBatch.publish(ctBatch);
+        ROS_INFO("DmpVelocityController: batch size published: #%d", ctBatch.samples.size());
+    }
+    refIter = -1;
 }
 
 void DmpVelocityController::initROSCommunication(){
@@ -58,8 +113,9 @@ void DmpVelocityController::initROSCommunication(){
 
     subFrankaStates = nodeHandle->subscribe("/franka_state_controller/franka_states", 1, &DmpVelocityController::frankaStateCallback, this);
 
-    //    actionlib::SimpleActionClient<franka_control::ErrorRecoveryAction> tempClient("recover_robot", true);
-    //    recoveryClient = tempClient;
+    if (!nodeHandle->getParam("/dmp_velocity_controller/std_offset_q0", stdOffset)) {
+      ROS_ERROR("DmpStartVelocityController: Invalid or no std_offset_q0 parameter provided; provide e.g. std_offset_q0:=0.05");
+    }
 }
 
 bool DmpVelocityController::checkRobotSetup(){
@@ -192,63 +248,6 @@ bool DmpVelocityController::checkRobotInit() {
     return true;
 }
 
-bool DmpVelocityController::getRobotState(){
-    // check for initial joint positions of the robot
-    auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
-    if (state_interface == nullptr) {
-        ROS_ERROR("DmpViapController: Could not get state interface from hardware when starting the controller");
-    }
-    try {
-        auto state_handle = state_interface->getHandle("panda_robot");
-
-        for (size_t i = 0; i < dofs; i++) {
-            qInit[i] = state_handle.getRobotState().q_d[i];
-        }
-    } catch (const hardware_interface::HardwareInterfaceException& e) {
-        ROS_ERROR_STREAM(
-                    "DmpViapController: Exception getting state handle: " << e.what());
-        return false;
-    }
-    return true;
-}
-
-void DmpVelocityController::starting(const ros::Time& /* time */) {
-    std::cout<<"DmpVelocityController: including ct: starting()"<<std::endl;
-    // initialize the dmp trajectory (resetting the canonical sytem)
-    dmp.resettState();
-    //assume initialization
-    flagPubEx = false;
-    refIter = 0;
-
-//    checkRobotInit();
-    getRobotState();
-
-    // create new MDPbatch
-    ctBatch.samples.clear();
-
-    firstCB = true;
-
-    elapsedTime = ros::Duration(0.0);
-}
-
-void DmpVelocityController::update(const ros::Time& /* time */,
-                                   const ros::Duration& period) {
-    elapsedTime += period;
-
-    std::vector<double> dq(7,0.0000001);
-
-    dq = dmp.step(externalForce, tau);
-    refIter++;
-
-    checkRobotState();
-
-    checkStoppingCondition();
-
-    isValidVelocity(dq);
-
-    commandRobot(dq);
-}
-
 void DmpVelocityController::checkRobotState() {
     if (currentRobotMode != 1 && currentRobotMode != 2) {
         switch (currentRobotMode){
@@ -278,21 +277,24 @@ void DmpVelocityController::checkRobotState() {
     }
 }
 
-bool DmpVelocityController::errorRecovery(){
-    actionlib::SimpleActionClient<franka_control::ErrorRecoveryAction> tempClient("/franka_control/error_recovery/", true);
-    tempClient.waitForServer();
-    franka_control::ErrorRecoveryGoal goalRecovery;
-    tempClient.sendGoal(goalRecovery);
-    tempClient.waitForResult(ros::Duration(1.0));
-    if (tempClient.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
-        ROS_INFO("error recovery successfull");
-        return true;
+bool DmpVelocityController::getRobotState(){
+    // check for initial joint positions of the robot
+    auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
+    if (state_interface == nullptr) {
+        ROS_ERROR("DmpViapController: Could not get state interface from hardware when starting the controller");
     }
-    else
-    {
-        ROS_INFO("error recovery unsuccessfull");
+    try {
+        auto state_handle = state_interface->getHandle("panda_robot");
+
+        for (size_t i = 0; i < dofs; i++) {
+            qInit[i] = state_handle.getRobotState().q_d[i];
+        }
+    } catch (const hardware_interface::HardwareInterfaceException& e) {
+        ROS_ERROR_STREAM(
+                    "DmpViapController: Exception getting state handle: " << e.what());
         return false;
     }
+    return true;
 }
 
 void DmpVelocityController::checkStoppingCondition(){
@@ -319,13 +321,21 @@ void DmpVelocityController::commandRobot(const std::vector<double> &dq){
     }
 }
 
-void DmpVelocityController::stopping(const ros::Time& /*time*/) {
-    // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
-    // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
-    // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
-    pubBatch.publish(ctBatch);
-    ROS_INFO("DmpVelocityController: batch size published: #%d", ctBatch.samples.size());
-    refIter = -1;
+bool DmpVelocityController::errorRecovery(){
+    actionlib::SimpleActionClient<franka_control::ErrorRecoveryAction> tempClient("/franka_control/error_recovery/", true);
+    tempClient.waitForServer();
+    franka_control::ErrorRecoveryGoal goalRecovery;
+    tempClient.sendGoal(goalRecovery);
+    tempClient.waitForResult(ros::Duration(1.0));
+    if (tempClient.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
+        ROS_INFO("error recovery successfull");
+        return true;
+    }
+    else
+    {
+        ROS_INFO("error recovery unsuccessfull");
+        return false;
+    }
 }
 
 //TODO: adapt to react to a change of the coupling term as a topic
@@ -359,6 +369,7 @@ void DmpVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr
     }
 
 }
+
 void DmpVelocityController::ctSmoothedCallback(const common_msgs::CouplingTerm::ConstPtr& msg) {
     std::vector<double> coupling(msg->data.begin(),msg->data.end());
     dmp.setCouplingTerm(coupling);
@@ -414,6 +425,42 @@ bool DmpVelocityController::isValidVelocity(std::vector<double> velocitiesToAppl
 
     return true;
 }
+
+void DmpVelocityController::setupSampling(){
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    generator = std::default_random_engine (seed);
+    distribution = std::normal_distribution<double>(meanOffset,stdOffset);
+}
+
+std::vector <double> DmpVelocityController::getRandomVectorOffset(){
+    std::vector<double> randomVector(7,0.0);
+    for (int iterate=0; iterate<dofs; iterate++){
+        randomVector[iterate] = distribution(generator);
+    }
+    return randomVector;
+}
+
+std::vector<double> DmpVelocityController::addVectors(const std::vector<double> &element1, const std::vector<double> &element2){
+    assert(element1.size() == element2.size());
+    std::vector<double> returnVector(element1.size(),0.0);
+    for (int iterator=0; iterator < element1.size(); iterator++) {
+        returnVector[iterator] = element1[iterator] + element2[iterator];
+    }
+    return returnVector;
+}
+
+void DmpVelocityController::sampleGoalQ(){
+    // adapt the dmp to the initial joint positions of the robot
+    std::vector<double> dmpGoalV(dmpGoal.begin(), dmpGoal.end());
+    std::vector<double> offsetGoalV = getRandomVectorOffset();
+    std::vector<double> qGoalWithOffsetV = addVectors(dmpGoalV,offsetGoalV);
+    for (int iter=0;iter<dmpGoal.size();iter++){
+        dmpGoal[iter] = qGoalWithOffsetV[iter];
+    }
+    dmp.setFinalPosition(qGoalWithOffsetV); // also initializes the dmp trajectory (resetting the canonical sytem)
+    dmp.resettState();
+}
+
 
 }  // namespace prcdmp_node
 
