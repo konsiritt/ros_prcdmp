@@ -102,6 +102,7 @@ void DmpVelocityController::stopping(const ros::Time& /*time*/) {
     ROS_INFO("DmpVelocityController: batch size published: #%d", ctBatch.samples.size());
     //}
     refIter = -1;
+    checkRobotState();
 }
 
 void DmpVelocityController::initROSCommunication(){
@@ -440,7 +441,7 @@ bool DmpVelocityController::isValidVelocity(std::vector<double> velocitiesToAppl
     // check cartesian position of End effector with virtual wall height of tabletop
     if (futurePosEnd[14] < virtWallZ_EE || futurePosFlange[14] < virtWallZ_F || futurePosJoint7[14] < virtWallZ_J7 || futurePosJoint6[14] < virtWallZ_J6){
         std_msgs::Bool msg;
-        msg.data = true;
+        msg.data = false;
         pubError.publish(msg);
         ROS_INFO("DmpVelocityController: virtual wall hit");
     }
