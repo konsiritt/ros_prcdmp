@@ -13,6 +13,7 @@
 #include <ros/node_handle.h>
 #include <ros/time.h>
 #include <actionlib/client/simple_action_client.h>
+#include <ros/ros.h>
 
 #include <boost/array.hpp>
 
@@ -35,6 +36,7 @@
 #include <franka/exception.h>
 #include <franka_control/ErrorRecoveryAction.h>
 #include <franka_hw/franka_model_interface.h>
+#include <franka_control/services.h>
 
 namespace prcdmp_node {
 
@@ -81,6 +83,8 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   std::vector<double> getRandomVectorOffset();
   std::vector<double> addVectors(const std::vector<double>& element1, const std::vector<double>& element2);
   void sampleGoalQ();
+
+  void computeGoalOffset();
 
   hardware_interface::VelocityJointInterface* velocity_joint_interface_;
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
@@ -131,7 +135,10 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   ros::Publisher pubError;
   ros::Publisher pubBatch;
 
+  ros::ServiceClient collisionClient;
+
   bool flagPubEx  = false;
+  bool flagPubErr = false;
 
   //include random generator to sample initial position
   std::default_random_engine generator;

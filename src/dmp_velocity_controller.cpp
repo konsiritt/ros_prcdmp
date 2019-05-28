@@ -56,6 +56,7 @@ void DmpVelocityController::starting(const ros::Time& /* time */) {
     dmp.resettState();
     //assume initialization
     flagPubEx = false;
+    flagPubErr = false;
     refIter = 0;
 
 //    checkRobotInit();
@@ -94,10 +95,12 @@ void DmpVelocityController::stopping(const ros::Time& /*time*/) {
     // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
     // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
     // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
-    if (ctBatch.samples.size() > 30){
-        pubBatch.publish(ctBatch);
-        ROS_INFO("DmpVelocityController: batch size published: #%d", ctBatch.samples.size());
-    }
+    //if (ctBatch.samples.size() > 30){
+
+    computeGoalOffset();
+    pubBatch.publish(ctBatch);
+    ROS_INFO("DmpVelocityController: batch size published: #%d", ctBatch.samples.size());
+    //}
     refIter = -1;
 }
 
@@ -116,6 +119,8 @@ void DmpVelocityController::initROSCommunication(){
     if (!nodeHandle->getParam("/dmp_velocity_controller/std_offset_q0", stdOffset)) {
       ROS_ERROR("DmpStartVelocityController: Invalid or no std_offset_q0 parameter provided; provide e.g. std_offset_q0:=0.05");
     }
+
+    collisionClient = nodeHandle->serviceClient<franka_control::SetForceTorqueCollisionBehavior>("/franka_control/set_force_torque_collision_behavior");
 }
 
 bool DmpVelocityController::checkRobotSetup(){
@@ -136,9 +141,9 @@ bool DmpVelocityController::checkRobotSetup(){
         return false;
     }
     velocity_joint_handles_.resize(7);
-    for (size_t i = 0; i < 7; ++i) {
+    for (size_t iter = 0; iter < 7; ++iter) {
         try {
-            velocity_joint_handles_[i] = velocity_joint_interface_->getHandle(joint_names[i]);
+            velocity_joint_handles_[iter] = velocity_joint_interface_->getHandle(joint_names[iter]);
         } catch (const hardware_interface::HardwareInterfaceException& ex) {
             ROS_ERROR_STREAM(
                         "DmpVelocityController: Exception getting joint handles: " << ex.what());
@@ -182,6 +187,19 @@ bool DmpVelocityController::checkRobotSetup(){
       ROS_ERROR_STREAM(
           "DmpVelocityController: Exception getting model handle from interface: " << ex.what());
       return false;
+    }
+
+    // setup collision behavior
+    franka_control::SetForceTorqueCollisionBehavior collisionSrv;
+    collisionSrv.request.lower_torque_thresholds_nominal = {25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0};
+    collisionSrv.request.upper_torque_thresholds_nominal = {25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0};
+    collisionSrv.request.lower_force_thresholds_nominal = {25.0, 25.0, 25.0, 25.0, 25.0, 25.0};
+    collisionSrv.request.upper_force_thresholds_nominal = {25.0, 25.0, 25.0, 25.0, 25.0, 25.0};
+    if (collisionClient.call(collisionSrv)) {
+        ROS_INFO("DmpVelocityController: Collision information successfully set");
+    }
+    else {
+        return false;
     }
 
     return true;
@@ -235,9 +253,9 @@ void DmpVelocityController::initDmpObjects(int &nBFs, double &dt, std::vector<do
 bool DmpVelocityController::checkRobotInit() {
     getRobotState();
 
-    for (size_t i = 0; i < dofs; i++) {
+    for (size_t iter = 0; iter < dofs; iter++) {
         // if only just one joint is not close enough to q0, assume robot is not initialized
-        if (std::abs(qInit[i] - dmpQ0[i]) > 0.05) { //TODO: is this a good threshold?
+        if (std::abs(qInit[iter] - dmpQ0[iter]) > 0.05) { //TODO: is this a good threshold?
             ROS_ERROR_STREAM(
                         "DmpVelocityController: Robot is not in the expected starting position for "
                         "this dmp.");
@@ -261,10 +279,14 @@ void DmpVelocityController::checkRobotState() {
             ROS_INFO("ROBOT_MODE_REFLEX=4: Attempting error recovery!");            
             if (errorRecovery())
             {
-                std_msgs::Bool msg;
-                msg.data = true;
-                pubError.publish(msg);
-                ROS_INFO("error recovery successful");
+                if (!flagPubErr) {
+                    std_msgs::Bool msg;
+                    msg.data = true;
+                    pubError.publish(msg);
+                    ROS_INFO("error recovery successful");
+                    flagPubErr = true;
+                }
+
             };
             break;
         case 5:
@@ -281,17 +303,17 @@ bool DmpVelocityController::getRobotState(){
     // check for initial joint positions of the robot
     auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
     if (state_interface == nullptr) {
-        ROS_ERROR("DmpViapController: Could not get state interface from hardware when starting the controller");
+        ROS_ERROR("DmpVelocityController: Could not get state interface from hardware when starting the controller");
     }
     try {
         auto state_handle = state_interface->getHandle("panda_robot");
 
-        for (size_t i = 0; i < dofs; i++) {
-            qInit[i] = state_handle.getRobotState().q_d[i];
+        for (size_t iter = 0; iter < dofs; iter++) {
+            qInit[iter] = state_handle.getRobotState().q_d[iter];
         }
     } catch (const hardware_interface::HardwareInterfaceException& e) {
         ROS_ERROR_STREAM(
-                    "DmpViapController: Exception getting state handle: " << e.what());
+                    "DmpVelocityController: Exception getting state handle: " << e.what());
         return false;
     }
     return true;
@@ -346,15 +368,15 @@ void DmpVelocityController::ctCallback(const common_msgs::CouplingTerm::ConstPtr
         if (refIter > 0 && !firstCB)
         {
             std::vector<double> currQ = dmp.getY();
-            for (int i=0; i<dofs; i++)
+            for (int iter=0; iter<dofs; iter++)
             {
                 if (refIter-1 > refQ.size())
                 {
                     ROS_INFO("DmpVelocityController: we are accessing the reference trajectory out of bounds");
-                    ctSample.q_offset[i] = 0.0;
+                    ctSample.q_offset[iter] = 0.0;
                 }
                 else {
-                    ctSample.q_offset[i] = abs(currQ[i] - refQ[refIter-1][i]);
+                    ctSample.q_offset[iter] = abs(currQ[iter] - refQ[refIter-1][iter]);
                 }
             }
             ctBatch.samples.push_back(ctSample);
@@ -406,9 +428,9 @@ bool DmpVelocityController::isValidVelocity(std::vector<double> velocitiesToAppl
         return false;
     }
 
-    for(int i = 0; i < dofs; i++)
+    for(int iter = 0; iter < dofs; iter++)
     {
-      currentPos[i] += velocitiesToApply[i]/1000.0;
+      currentPos[iter] += velocitiesToApply[iter]/1000.0;
     }
     futurePosEnd = modelHandle->getPose(franka::Frame::kEndEffector, currentPos, F_T_EE, EE_T_K);
     futurePosFlange = modelHandle->getPose(franka::Frame::kFlange, currentPos, F_T_EE, EE_T_K);
@@ -459,6 +481,29 @@ void DmpVelocityController::sampleGoalQ(){
     }
     dmp.setFinalPosition(qGoalWithOffsetV); // also initializes the dmp trajectory (resetting the canonical sytem)
     dmp.resettState();
+}
+
+void DmpVelocityController::computeGoalOffset(){
+    auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
+    if (state_interface == nullptr) {
+        ROS_ERROR("DmpVelocityController: Could not get state interface from hardware when checking velocities");
+    }
+    std::array<double, 7> currentPos;
+
+    try {
+        auto state_handle = state_interface->getHandle("panda_robot");
+
+        currentPos = state_handle.getRobotState().q;
+
+    } catch (const hardware_interface::HardwareInterfaceException& e) {
+        ROS_ERROR_STREAM(
+                    "DmpVelocityController: Exception getting state handle: " << e.what());
+    }
+
+    for (int iter=0; iter<dofs; iter++){
+        ctBatch.g_offset[iter] = abs(dmpGoal[iter] - currentPos[iter]);
+    }
+
 }
 
 
