@@ -63,6 +63,8 @@ void DmpStartVelocityController::update(const ros::Time& /* time */,
 
   dq = dmpInitialize.simpleStep(externalForce, tau);
 
+  checkRobotState();
+
   checkStoppingCondition();
 
   commandRobot(dq);
@@ -81,6 +83,8 @@ void DmpStartVelocityController::initROSCommunication(){
     if (!nodeHandle->getParam("/dmp_velocity_controller/std_offset_q0", stdOffset)) {
       ROS_ERROR("DmpStartVelocityController: Invalid or no std_offset_q0 parameter provided; provide e.g. std_offset_q0:=0.05");
     }
+
+    subFrankaStates = nodeHandle->subscribe("/franka_state_controller/franka_states", 1, &DmpStartVelocityController::frankaStateCallback, this);
 
 }
 
@@ -197,6 +201,31 @@ bool DmpStartVelocityController::checkRobotInit() {
     return true;
 }
 
+void DmpStartVelocityController::checkRobotState() {
+    if (currentRobotMode != 1 && currentRobotMode != 2) {
+        switch (currentRobotMode){
+        case 0:
+            ROS_INFO("ROBOT_MODE_OTHER=0");
+            break;
+        case 3:
+            ROS_INFO("ROBOT_MODE_GUIDING=3");
+            break;
+        case 4:
+            ROS_INFO("ROBOT_MODE_REFLEX=4: Attempting error recovery!");
+            if (errorRecovery())
+            {
+            };
+            break;
+        case 5:
+            ROS_INFO("ROBOT_MODE_USER_STOPPED=5");
+            break;
+        case 6:
+            ROS_INFO("ROBOT_MODE_AUTOMATIC_ERROR_RECOVERY=6");
+            break;
+        }
+    }
+}
+
 void DmpStartVelocityController::checkStoppingCondition(){
     if (dmpInitialize.getTrajFinished()) {
         notInitializedDMP = false;
@@ -220,6 +249,27 @@ void DmpStartVelocityController::commandRobot(const std::vector<double> &dq){
         joint_handle.setCommand(omega);
         it++;
     }
+}
+
+bool DmpStartVelocityController::errorRecovery(){
+    actionlib::SimpleActionClient<franka_control::ErrorRecoveryAction> tempClient("/franka_control/error_recovery/", true);
+    tempClient.waitForServer();
+    franka_control::ErrorRecoveryGoal goalRecovery;
+    tempClient.sendGoal(goalRecovery);
+    tempClient.waitForResult(ros::Duration(1.0));
+    if (tempClient.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
+        ROS_INFO("error recovery successfull");
+        return true;
+    }
+    else
+    {
+        ROS_INFO("error recovery unsuccessfull");
+        return false;
+    }
+}
+
+void DmpStartVelocityController::frankaStateCallback(const franka_msgs::FrankaState::ConstPtr& msg) {
+    currentRobotMode = msg->robot_mode;
 }
 
 void DmpStartVelocityController::setupSampling(){

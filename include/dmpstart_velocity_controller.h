@@ -13,6 +13,9 @@
 #include <ros/node_handle.h>
 #include <ros/time.h>
 #include "std_msgs/Bool.h"
+#include <actionlib/client/simple_action_client.h>
+
+#include "franka_msgs/FrankaState.h"
 
 #include "UTILS/Config.h"
 #include <string>
@@ -25,6 +28,7 @@
 #include <franka/robot_state.h>
 #include <franka/model.h>
 #include <franka/exception.h>
+#include <franka_control/ErrorRecoveryAction.h>
 
 namespace prcdmp_node {
 
@@ -52,9 +56,15 @@ class DmpStartVelocityController : public controller_interface::MultiInterfaceCo
 
   bool checkRobotInit();
 
+  void checkRobotState();
+
   void checkStoppingCondition();
 
   void commandRobot(const std::vector<double> &dq);
+
+  bool errorRecovery();
+
+  void frankaStateCallback(const franka_msgs::FrankaState::ConstPtr& msg);
 
   void setupSampling();
   std::vector<double> getRandomVectorOffset();
@@ -85,6 +95,8 @@ class DmpStartVelocityController : public controller_interface::MultiInterfaceCo
   std::array<double,7> qInit;
   std::string robotIp;
 
+  uint8_t currentRobotMode;
+
   // flag whether or not moving to start is necessary
   bool notInitializedDMP = false;
   // flag wheter or not the target dmp is being executed
@@ -93,6 +105,7 @@ class DmpStartVelocityController : public controller_interface::MultiInterfaceCo
   bool flagPubEx  = false;
 
   ros::Publisher pub;
+  ros::Subscriber subFrankaStates;
 
   //include random generator to sample initial position
   std::default_random_engine generator;
