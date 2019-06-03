@@ -86,59 +86,51 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
 
   void computeGoalOffset();
 
-  hardware_interface::VelocityJointInterface* velocity_joint_interface_;
-  std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
   ros::Duration elapsedTime;
 
-  // handle for robot hardware (not sure if safe?)
+  // robot handles
   hardware_interface::RobotHW* robotHardware;
   franka_hw::FrankaModelInterface* modelInterface;
   std::unique_ptr<franka_hw::FrankaModelHandle> modelHandle;
+  hardware_interface::VelocityJointInterface* velocity_joint_interface_;
+  std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
 
-  // handle for ROS node (communication, maybe not the best idea - performance?)
-  ros::NodeHandle* nodeHandle;
+  // ROS communication
+  ros::NodeHandle* nodeHandle; // handle for ROS node
+  ros::Subscriber subCoupling;
+  ros::Subscriber subCouplingSmoothed;
+  ros::Subscriber subFrankaStates;
+  ros::Publisher pubExec;
+  ros::Publisher pubError;
+  ros::Publisher pubBatch;
+  common_msgs::SamplesBatch ctBatch;
+  common_msgs::MDPSample ctSample;
+  ros::ServiceClient collisionClient;
 
+  // states concerning communication and robot
+  uint8_t currentRobotMode;
+  bool flagPubEx  = false;
+  bool flagPubErr = false;
+
+  // dmp specific members
   int dofs;
-  // dmp class
-  DiscreteDMP dmp;
-  // time scaling factor: tau<1 -> slower execution
-  double tau; 
+  DiscreteDMP dmp; // dmp class
+  double tau; // time scaling factor: tau<1 -> slower execution
   std::vector<double> externalForce;
 
-  // initial joint position in the dmp
-  std::array<double,7> dmpQ0;
-  // goal joint position in the dmp
-  boost::array<double,7> dmpGoal;
-  // current joint position of the robot
-  std::array<double,7> qInit;
+  // trajectory specific members
+  std::array<double,7> dmpQ0; // initial joint position in the dmp
+  boost::array<double,7> dmpGoal; // goal joint position in the dmp
+  std::array<double,7> qInit; // current joint position of the robot
   std::string robotIp;
-  std::vector<std::vector<double>> refQ;
-  int refIter=-1;
+  std::vector<std::vector<double>> refQ; // reference trajectory for rollout without coupling term
+  int refIter=-1; // iterator for reference trajectory
   bool firstCB = true;
 
   double virtWallZ_EE = 0.10;// virtual wall for end effector height in 0_T
   double virtWallZ_F = 0.15;// virtual wall for end effector height in 0_T
   double virtWallZ_J7 = 0.15;// virtual wall for end effector height in 0_T
   double virtWallZ_J6 = 0.15;// virtual wall for end effector height in 0_T
-
-  ros::Subscriber subCoupling;
-  ros::Subscriber subCouplingSmoothed;
-  ros::Subscriber subFrankaStates;
-
-  uint8_t currentRobotMode;
-
-  common_msgs::SamplesBatch ctBatch;
-  common_msgs::MDPSample ctSample;
-
-  // publisher for execution status flag
-  ros::Publisher pubExec;
-  ros::Publisher pubError;
-  ros::Publisher pubBatch;
-
-  ros::ServiceClient collisionClient;
-
-  bool flagPubEx  = false;
-  bool flagPubErr = false;
 
   //include random generator to sample initial position
   std::default_random_engine generator;

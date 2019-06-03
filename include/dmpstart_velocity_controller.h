@@ -71,41 +71,35 @@ class DmpStartVelocityController : public controller_interface::MultiInterfaceCo
   std::vector<double> addVectors(const std::vector<double>& element1, const std::vector<double>& element2);
   void sampleInitalQ();
 
+  // handles for robot hardware
+  hardware_interface::RobotHW* robotHardware;
   hardware_interface::VelocityJointInterface* velocity_joint_interface_;
   std::vector<hardware_interface::JointHandle> velocity_joint_handles_;
+
   ros::Duration elapsedTime;
 
-  // handle for robot hardware (not sure if safe?)
-  hardware_interface::RobotHW* robotHardware;
-
-  // handle for ROS node (communication, maybe not the best idea - performance?)
+  // ros communication
   ros::NodeHandle* nodeHandle;
-
-  int dofs;
-  // dmp class
-  DiscreteDMP dmpInitialize;
-  double timeSpan = 3.5; // for initializing the timespan can be shorter
-  // time scaling factor: tau<1 -> slower execution
-  double tau; 
-  std::vector<double> externalForce;
-
-  // initial joint position in the dmp
-  std::array<double,7> dmpQ0;
-  // current joint position of the robot
-  std::array<double,7> qInit;
-  std::string robotIp;
-
-  uint8_t currentRobotMode;
-
-  // flag whether or not moving to start is necessary
-  bool notInitializedDMP = false;
-  // flag wheter or not the target dmp is being executed
-  bool executingDMP = false;
-
-  bool flagPubEx  = false;
-
   ros::Publisher pub;
   ros::Subscriber subFrankaStates;
+
+  // dmp specific members
+  int dofs;
+  DiscreteDMP dmpInitialize; // dmp class
+  double timeSpan = 3.5; // for initializing the timespan can be shorter
+  double tau; // time scaling factor: tau<1 -> slower execution
+  std::vector<double> externalForce;
+
+  // trajectory specific members
+  std::array<double,7> dmpQ0; // initial joint position in the dmp
+  std::array<double,7> qInit; // current joint position of the robot
+  std::string robotIp;
+
+  // states concerning robot and communication
+  uint8_t currentRobotMode;
+  bool notInitializedDMP = false; // flag whether or not moving to start is necessary
+  bool executingDMP = false;// flag wheter or not the target dmp is being executed
+  bool flagPubEx  = false;
 
   //include random generator to sample initial position
   std::default_random_engine generator;
