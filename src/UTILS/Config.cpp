@@ -110,3 +110,8 @@ std::string Config::getDataConfPath()
 {
     return dataConfPath;
 }
+
+std::string Config::getConfBasePath()
+{
+    return confBasePath;
+}

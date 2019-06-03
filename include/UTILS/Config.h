@@ -28,6 +28,7 @@ public:
     std::string getReplayTrajectoryPath();
     std::string getDmpConfPath();
     std::string getDataConfPath();
+    std::string getConfBasePath();
 
 private:
 
