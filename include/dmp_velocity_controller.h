@@ -24,7 +24,7 @@
 #include "franka_msgs/FrankaState.h"
 
 #include "UTILS/Config.h"
-#include <string>
+#include "UTILS/trajectoryUtils.h"
 #include "DMP/DMP.hpp"
 #include "DMP/DiscreteDMP.hpp"
 #include <jsoncpp/json/value.h>
@@ -86,6 +86,8 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
 
   void computeGoalOffset();
 
+  void saveDmpData();
+
   ros::Duration elapsedTime;
 
   // robot handles
@@ -111,6 +113,7 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   uint8_t currentRobotMode;
   bool flagPubEx  = false;
   bool flagPubErr = false;
+  bool logging = false;
 
   // dmp specific members
   int dofs;
@@ -124,6 +127,7 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   std::array<double,7> qInit; // current joint position of the robot
   std::string robotIp;
   std::vector<std::vector<double>> refQ; // reference trajectory for rollout without coupling term
+  std::vector<std::vector<double>> saveQ; // member that records qs to save to file
   int refIter=-1; // iterator for reference trajectory
   bool firstCB = true;
 
@@ -137,6 +141,8 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   std::normal_distribution<double> distribution;
   double meanOffset = 0.0;
   double stdOffset = 0.05;
+
+  std::string datasetPath;
 };
 
 }  // namespace prcdmp_node

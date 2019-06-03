@@ -70,6 +70,11 @@ void DmpVelocityController::starting(const ros::Time& /* time */) {
 
     firstCB = true;
 
+    if (logging) {
+        saveQ.clear();
+    }
+
+
     elapsedTime = ros::Duration(0.0);
 }
 
@@ -81,6 +86,11 @@ void DmpVelocityController::update(const ros::Time& /* time */,
 
     dq = dmp.step(externalForce, tau);
     refIter++;
+
+    if (logging) {
+        std::vector <double> tempQ = dmp.getY();
+        saveQ.push_back(tempQ);
+    }
 
     checkRobotState();
 
@@ -103,6 +113,11 @@ void DmpVelocityController::stopping(const ros::Time& /*time*/) {
     //}
     refIter = -1;
     checkRobotState();
+
+    if (logging){
+        ROS_INFO("logging is on: dumping last dmp trajectory to file");
+        saveDmpData();
+    }
 }
 
 void DmpVelocityController::initROSCommunication(){
@@ -119,6 +134,10 @@ void DmpVelocityController::initROSCommunication(){
 
     if (!nodeHandle->getParam("/dmp_velocity_controller/std_offset_q0", stdOffset)) {
       ROS_ERROR("DmpStartVelocityController: Invalid or no std_offset_q0 parameter provided; provide e.g. std_offset_q0:=0.05");
+    }
+
+    if (!nodeHandle->getParam("/dmp_velocity_controller/logging", logging)) {
+      ROS_ERROR("DmpStartVelocityController: Invalid or no logging parameter provided; provide e.g. logging:=true");
     }
 
     collisionClient = nodeHandle->serviceClient<franka_control::SetForceTorqueCollisionBehavior>("/franka_control/set_force_torque_collision_behavior");
@@ -210,7 +229,6 @@ bool DmpVelocityController::loadDmpData(int &nBFs, double &dt, std::vector<doubl
                                         std::vector<double> &goalv, std::vector<std::vector<double> > &w,
                                         std::vector<double> &gainA, std::vector<double> &gainB) {
     //----------------------load DMP specific config data from files----------------------
-    std::string datasetPath;
     if (!nodeHandle->getParam("/dmp_velocity_controller/data_set", datasetPath)) {
         ROS_ERROR("DmpVelocityController: Invalid or no data_set parameter provided; provide e.g. data_set:=set1");
         return false;
@@ -505,6 +523,15 @@ void DmpVelocityController::computeGoalOffset(){
         ctBatch.g_offset[iter] = abs(dmpGoal[iter] - currentPos[iter]);
     }
 
+}
+
+void DmpVelocityController::saveDmpData(){
+    //-------handles config file access----------------------
+    std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/data/");
+    Config config(datasetPath, basePackagePath);
+    std::string saveQsPath = config.getConfBasePath() + std::string("dmpQsWithCt.txt");
+    ROS_INFO("Logging internal q(i) state of dmp to file: %s\n", saveQsPath.c_str());
+    UTILS::writeTrajToText(saveQ, saveQsPath);
 }
 
 
