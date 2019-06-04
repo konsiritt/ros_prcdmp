@@ -88,7 +88,7 @@ class DmpViapController : public controller_interface::MultiInterfaceController<
   std::vector<double> dmpQ0; // initial joint position in the dmp
   std::array<double,7> qInit; // current joint position of the robot
   // safe via point for recovery after passing the obstacle
-  std::vector<double> viaPointQ = {0.511,-0.022,-0.394,-1.316,1.521,1.667,-0.479};//{0.57189,0.293397,0.392036,-1.20435,1.32246,2.51705,-0.55729};//
+  std::vector<double> viaPointQ = {0.512606,-0.692921,-0.208256,-1.87101,1.2428,1.86703,-0.287594};//{0.57189,0.293397,0.392036,-1.20435,1.32246,2.51705,-0.55729};//
 
   std::string robotIp;
 
