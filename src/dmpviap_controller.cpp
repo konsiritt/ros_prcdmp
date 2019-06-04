@@ -40,6 +40,44 @@ bool DmpViapController::init(hardware_interface::RobotHW* robot_hardware,
   return true;
 }
 
+void DmpViapController::starting(const ros::Time& /* time */) {
+    ROS_INFO("DmpViapController: starting()");
+    //assume initialization
+    notInitializedDMP = false;
+    flagPubEx = false;
+
+    getRobotState();
+    // adapt the dmp to the initial joint positions of the robot
+    std::vector<double> qInitV(qInit.begin(), qInit.end());
+    dmpInitialize.setInitialPosition(qInitV); // also initializes the dmp trajectory (resetting the canonical sytem)
+
+    dmpInitialize.setFinalPosition(viaPointQ);
+
+    dmpInitialize.resettState();
+
+    elapsedTime = ros::Duration(0.0);
+}
+
+void DmpViapController::update(const ros::Time& /* time */,
+                                            const ros::Duration& period) {
+    elapsedTime += period;
+
+    std::vector<double> dq(7,0.0000001);
+
+    dq = dmpInitialize.simpleStep(externalForce, tau);
+
+    checkStoppingCondition();
+
+    commandRobot(dq);
+}
+
+
+void DmpViapController::stopping(const ros::Time& /*time*/) {
+  // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
+  // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
+  // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
+}
+
 void DmpViapController::initROSCommunication(){
     // publisher to send end of initialization signal
     pub = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_notInit", 10);
@@ -159,37 +197,6 @@ void DmpViapController::initDmpObjects( double &dt, std::vector<double> &initial
     dmpInitialize = DiscreteDMP(dofs, dt, initialPosition, goalPosition, gainA, gainB);
 }
 
-void DmpViapController::starting(const ros::Time& /* time */) {
-    ROS_INFO("DmpViapController: starting()");
-    //assume initialization
-    notInitializedDMP = false;
-    flagPubEx = false;
-
-    getRobotState();
-    // adapt the dmp to the initial joint positions of the robot
-    std::vector<double> qInitV(qInit.begin(), qInit.end());
-    dmpInitialize.setInitialPosition(qInitV); // also initializes the dmp trajectory (resetting the canonical sytem)
-
-    dmpInitialize.setFinalPosition(viaPointQ);
-
-    dmpInitialize.resettState();
-
-    elapsedTime = ros::Duration(0.0);
-}
-
-void DmpViapController::update(const ros::Time& /* time */,
-                                            const ros::Duration& period) {
-    elapsedTime += period;
-
-    std::vector<double> dq(7,0.0000001);
-
-    dq = dmpInitialize.simpleStep(externalForce, tau);
-
-    checkStoppingCondition();
-
-    commandRobot(dq);
-}
-
 void DmpViapController::checkStoppingCondition(){
     if (dmpInitialize.getTrajFinished()) {
         notInitializedDMP = false;
@@ -213,12 +220,6 @@ void DmpViapController::commandRobot(const std::vector<double> &dq){
         joint_handle.setCommand(omega);
         it++;
     }
-}
-
-void DmpViapController::stopping(const ros::Time& /*time*/) {
-  // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
-  // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
-  // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
 }
 
 }  // namespace prcdmp_node
