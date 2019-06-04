@@ -131,6 +131,7 @@ void DmpVelocityController::initROSCommunication(){
     pubExec = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_exec", 10);
     pubError = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/error_occured", 10);
     pubBatch = nodeHandle->advertise<common_msgs::SamplesBatch>("/prcdmp/episodic_batch", 10);
+    pubGoal = nodeHandle->advertise<std_msgs::Float64MultiArray>("/prcdmp/q_goal", 10);
 
     // subscriber that handles changes to the dmp coupling term: TODO: change to coupling term
     subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 1, &DmpVelocityController::ctCallback, this);
@@ -513,6 +514,11 @@ void DmpVelocityController::sampleGoalQ(){
     }
     dmp.setFinalPosition(qGoalWithOffsetV); // also initializes the dmp trajectory (resetting the canonical sytem)
     dmp.resettState();
+
+    std_msgs::Float64MultiArray tempMsg;
+    std::vector <double> tempGoal (dmpGoal.begin(),dmpGoal.end());
+    tempMsg.data = tempGoal;
+    pubGoal.publish(tempMsg);
 }
 
 void DmpVelocityController::computeGoalOffset(){

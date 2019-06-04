@@ -18,6 +18,7 @@
 #include <boost/array.hpp>
 
 #include "std_msgs/Bool.h"
+#include "std_msgs/Float64MultiArray.h"
 #include "common_msgs/CouplingTerm.h"
 #include "common_msgs/MDPSample.h"
 #include "common_msgs/SamplesBatch.h"
@@ -106,6 +107,7 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   ros::Publisher pubExec;
   ros::Publisher pubError;
   ros::Publisher pubBatch;
+  ros::Publisher pubGoal;
   common_msgs::SamplesBatch ctBatch;
   common_msgs::MDPSample ctSample;
   ros::ServiceClient collisionClient;
