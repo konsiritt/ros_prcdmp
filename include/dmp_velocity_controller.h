@@ -125,7 +125,7 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   // trajectory specific members
   std::array<double,7> dmpQ0; // initial joint position in the dmp
   boost::array<double,7> dmpGoal; // goal joint position in the dmp
-  std::vector<double> robotQ; // current joint position of the robot
+  boost::array<double,7> robotQ; // current joint position of the robot
   std::string robotIp;
   std::vector<std::vector<double>> refQ; // reference trajectory for rollout without coupling term
   std::vector<std::vector<double>> saveDmpQ; // member that records qs to save to file

@@ -33,6 +33,11 @@ bool DmpVelocityController::init(hardware_interface::RobotHW* robot_hardware,
     //----------------------initialize dmp runtime object----------------------
     initDmpObjects(nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
 
+    // initialize dmpGoal to values from file
+    for (int iter=0;iter<dmpGoal.size();iter++){
+        dmpGoal[iter] = goalPosition[iter];
+    }
+
     // unroll dmp in refQ, resetState for DMP
     std::vector<std::vector<double>> refDQ, refDDQ;
     dmp.rollout(refQ, refDQ, refDDQ,externalForce,tau, -1, 0);
@@ -89,7 +94,8 @@ void DmpVelocityController::update(const ros::Time& /* time */,
         std::vector <double> tempQ = dmp.getY();
         saveDmpQ.push_back(tempQ);
         saveRobotState();
-        saveRobotQ.push_back(robotQ);
+        std::copy(robotQ.begin(),robotQ.end(),tempQ.begin());
+        saveRobotQ.push_back(tempQ);
         saveTime.push_back(elapsedTime.toSec());
     }
 
@@ -492,7 +498,8 @@ std::vector<double> DmpVelocityController::addVectors(const std::vector<double> 
 }
 
 void DmpVelocityController::updateDmpInit(){
-    dmp.setInitialPosition(robotQ);
+    std::vector<double> tempQ(robotQ.begin(),robotQ.end());
+    dmp.setInitialPosition(tempQ);
     dmp.resettState();
 }
 
