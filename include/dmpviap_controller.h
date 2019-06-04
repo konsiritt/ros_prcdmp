@@ -12,6 +12,9 @@
 #include <ros/node_handle.h>
 #include <ros/time.h>
 #include "std_msgs/Bool.h"
+#include <actionlib/client/simple_action_client.h>
+
+#include "franka_msgs/FrankaState.h"
 
 #include "UTILS/Config.h"
 #include <string>
@@ -24,6 +27,7 @@
 #include <franka/robot_state.h>
 #include <franka/model.h>
 #include <franka/exception.h>
+#include <franka_control/ErrorRecoveryAction.h>
 
 namespace prcdmp_node {
 
@@ -51,9 +55,15 @@ class DmpViapController : public controller_interface::MultiInterfaceController<
 
   bool checkRobotInit();
 
+  void checkRobotState();
+
   void checkStoppingCondition();
 
   void commandRobot(const std::vector<double> &dq);
+
+  bool errorRecovery();
+
+  void frankaStateCallback(const franka_msgs::FrankaState::ConstPtr& msg);
 
   // handles for robot
   hardware_interface::RobotHW* robotHardware;
@@ -65,6 +75,7 @@ class DmpViapController : public controller_interface::MultiInterfaceController<
   // ROS communication
   ros::NodeHandle* nodeHandle;
   ros::Publisher pub;
+  ros::Subscriber subFrankaStates;
 
   // dmp specific members
   int dofs;
@@ -81,6 +92,8 @@ class DmpViapController : public controller_interface::MultiInterfaceController<
 
   std::string robotIp;
 
+  // states concerning robot and communication
+  uint8_t currentRobotMode;
   bool notInitializedDMP = false; // flag whether or not moving to start is necessary
   bool executingDMP = false;// flag wheter or not the target dmp is being executed
   bool flagPubEx  = false;  
