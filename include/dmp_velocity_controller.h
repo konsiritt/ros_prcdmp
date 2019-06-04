@@ -64,8 +64,8 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   bool checkRobotInit();
 
   void checkRobotState();
-  // sets qInit to the current robot state
-  bool getRobotState();
+
+  bool saveRobotState();  // updates robotQ to the current robot state
 
   void checkStoppingCondition();
 
@@ -82,6 +82,7 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   void setupSampling();
   std::vector<double> getRandomVectorOffset();
   std::vector<double> addVectors(const std::vector<double>& element1, const std::vector<double>& element2);
+  void updateDmpInit();
   void sampleGoalQ();
 
   void computeGoalOffset();
@@ -124,10 +125,12 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   // trajectory specific members
   std::array<double,7> dmpQ0; // initial joint position in the dmp
   boost::array<double,7> dmpGoal; // goal joint position in the dmp
-  std::array<double,7> qInit; // current joint position of the robot
+  std::vector<double> robotQ; // current joint position of the robot
   std::string robotIp;
   std::vector<std::vector<double>> refQ; // reference trajectory for rollout without coupling term
-  std::vector<std::vector<double>> saveQ; // member that records qs to save to file
+  std::vector<std::vector<double>> saveDmpQ; // member that records qs to save to file
+  std::vector<std::vector<double>> saveRobotQ; // member that records robot qs to save to file
+  std::vector<double> saveTime;
   int refIter=-1; // iterator for reference trajectory
   bool firstCB = true;
 

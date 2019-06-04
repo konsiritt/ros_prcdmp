@@ -33,18 +33,13 @@ bool DmpVelocityController::init(hardware_interface::RobotHW* robot_hardware,
     //----------------------initialize dmp runtime object----------------------
     initDmpObjects(nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
 
-    for (int iter=0;iter<dmpGoal.size();iter++){
-        dmpGoal[iter] = goalPosition[iter];
-    }
-
     // unroll dmp in refQ, resetState for DMP
     std::vector<std::vector<double>> refDQ, refDDQ;
     dmp.rollout(refQ, refDQ, refDDQ,externalForce,tau, -1, 0);
     refDQ.clear();
     refDDQ.clear();
 
-    getRobotState();
-    //if (!checkRobotInit()) {return false;}
+    saveRobotState();
 
     setupSampling();
     return true;
@@ -59,8 +54,9 @@ void DmpVelocityController::starting(const ros::Time& /* time */) {
     flagPubErr = false;
     refIter = 0;
 
-//    checkRobotInit();
-    getRobotState();
+    saveRobotState();
+
+    updateDmpInit();
 
     sampleGoalQ();
 
@@ -71,7 +67,9 @@ void DmpVelocityController::starting(const ros::Time& /* time */) {
     firstCB = true;
 
     if (logging) {
-        saveQ.clear();
+        saveDmpQ.clear();
+        saveRobotQ.clear();
+        saveTime.clear();
     }
 
 
@@ -89,7 +87,10 @@ void DmpVelocityController::update(const ros::Time& /* time */,
 
     if (logging) {
         std::vector <double> tempQ = dmp.getY();
-        saveQ.push_back(tempQ);
+        saveDmpQ.push_back(tempQ);
+        saveRobotState();
+        saveRobotQ.push_back(robotQ);
+        saveTime.push_back(elapsedTime.toSec());
     }
 
     checkRobotState();
@@ -270,11 +271,11 @@ void DmpVelocityController::initDmpObjects(int &nBFs, double &dt, std::vector<do
 }
 
 bool DmpVelocityController::checkRobotInit() {
-    getRobotState();
+    saveRobotState();
 
     for (size_t iter = 0; iter < dofs; iter++) {
         // if only just one joint is not close enough to q0, assume robot is not initialized
-        if (std::abs(qInit[iter] - dmpQ0[iter]) > 0.05) { //TODO: is this a good threshold?
+        if (std::abs(robotQ[iter] - dmpQ0[iter]) > 0.05) { //TODO: is this a good threshold?
             ROS_ERROR_STREAM(
                         "DmpVelocityController: Robot is not in the expected starting position for "
                         "this dmp.");
@@ -318,7 +319,7 @@ void DmpVelocityController::checkRobotState() {
     }
 }
 
-bool DmpVelocityController::getRobotState(){
+bool DmpVelocityController::saveRobotState(){
     // check for initial joint positions of the robot
     auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
     if (state_interface == nullptr) {
@@ -328,7 +329,7 @@ bool DmpVelocityController::getRobotState(){
         auto state_handle = state_interface->getHandle("panda_robot");
 
         for (size_t iter = 0; iter < dofs; iter++) {
-            qInit[iter] = state_handle.getRobotState().q_d[iter];
+            robotQ[iter] = state_handle.getRobotState().q[iter];
         }
     } catch (const hardware_interface::HardwareInterfaceException& e) {
         ROS_ERROR_STREAM(
@@ -437,7 +438,7 @@ bool DmpVelocityController::isValidVelocity(std::vector<double> velocitiesToAppl
     try {
         auto state_handle = state_interface->getHandle("panda_robot");
 
-        currentPos = state_handle.getRobotState().q_d;
+        currentPos = state_handle.getRobotState().q; //was q_d before
         F_T_EE = state_handle.getRobotState().F_T_EE;
         EE_T_K = state_handle.getRobotState().EE_T_K;
 
@@ -490,6 +491,11 @@ std::vector<double> DmpVelocityController::addVectors(const std::vector<double> 
     return returnVector;
 }
 
+void DmpVelocityController::updateDmpInit(){
+    dmp.setInitialPosition(robotQ);
+    dmp.resettState();
+}
+
 void DmpVelocityController::sampleGoalQ(){
     // adapt the dmp to the initial joint positions of the robot
     std::vector<double> dmpGoalV(dmpGoal.begin(), dmpGoal.end());
@@ -530,8 +536,10 @@ void DmpVelocityController::saveDmpData(){
     std::string basePackagePath = ros::package::getPath("prcdmp_node") + std::string("/data/");
     Config config(datasetPath, basePackagePath);
     std::string saveQsPath = config.getConfBasePath() + std::string("dmpQsWithCt.txt");
+    std::string robotQsPath = config.getConfBasePath() + std::string("robotQsWithCt.txt");
     ROS_INFO("Logging internal q(i) state of dmp to file: %s\n", saveQsPath.c_str());
-    UTILS::writeTrajToText(saveQ, saveQsPath);
+    UTILS::writeTrajTimeToText(saveDmpQ, saveTime, saveQsPath);
+    UTILS::writeTrajTimeToText(saveRobotQ, saveTime, robotQsPath);
 }
 
 
