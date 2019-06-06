@@ -82,7 +82,7 @@ void DmpViapController::stopping(const ros::Time& /*time*/) {
 
 void DmpViapController::initROSCommunication(){
     // publisher to send end of initialization signal
-    pub = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_notInit", 10);
+    pub = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_notInit", 1);
 
     subFrankaStates = nodeHandle->subscribe("/franka_state_controller/franka_states", 1, &DmpViapController::frankaStateCallback, this);
 }

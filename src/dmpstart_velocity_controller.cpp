@@ -78,7 +78,7 @@ void DmpStartVelocityController::stopping(const ros::Time& /*time*/) {
 
 void DmpStartVelocityController::initROSCommunication(){
     // publisher to send end of initialization signal
-    pub = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_notInit", 10);
+    pub = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_notInit", 1);
 
     if (!nodeHandle->getParam("/dmp_velocity_controller/std_offset_q0", stdOffset)) {
       ROS_ERROR("DmpStartVelocityController: Invalid or no std_offset_q0 parameter provided; provide e.g. std_offset_q0:=0.05");

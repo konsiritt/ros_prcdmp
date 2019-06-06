@@ -128,10 +128,10 @@ void DmpVelocityController::stopping(const ros::Time& /*time*/) {
 }
 
 void DmpVelocityController::initROSCommunication(){
-    pubExec = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_exec", 10);
-    pubError = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/error_occured", 10);
-    pubBatch = nodeHandle->advertise<common_msgs::SamplesBatch>("/prcdmp/episodic_batch", 10);
-    pubGoal = nodeHandle->advertise<std_msgs::Float64MultiArray>("/prcdmp/q_goal", 10);
+    pubExec = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_exec", 1);
+    pubError = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/error_occured", 1);
+    pubBatch = nodeHandle->advertise<common_msgs::SamplesBatch>("/prcdmp/episodic_batch", 5);
+    pubGoal = nodeHandle->advertise<std_msgs::Float64MultiArray>("/prcdmp/q_goal", 1);
 
     // subscriber that handles changes to the dmp coupling term: TODO: change to coupling term
     subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 1, &DmpVelocityController::ctCallback, this);
