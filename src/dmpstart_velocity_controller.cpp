@@ -29,8 +29,8 @@ bool DmpStartVelocityController::init(hardware_interface::RobotHW* robot_hardwar
   std::vector<std::vector<double>> weights;
   loadDmpData(nBFs, dt, initialPosition, goalPosition, weights, gainA, gainB);
 
-  getRobotState();
-  std::vector<double> robotQ0(qInit.begin(), qInit.end());
+  saveRobotState();
+  std::vector<double> robotQ0(robotQ.begin(), robotQ.end());
   initDmpObjects(dt, robotQ0, initialPosition, gainA, gainB);
 
 //  // publish, so that the state of the robot (initialized or not) is known to the manager
@@ -48,7 +48,7 @@ void DmpStartVelocityController::starting(const ros::Time& /* time */) {
     notInitializedDMP = false;
     flagPubEx = false;
 
-    getRobotState();
+    saveRobotState();
 
     sampleInitalQ();
 
@@ -159,7 +159,7 @@ bool DmpStartVelocityController::loadDmpData(int &nBFs, double &dt, std::vector<
     return true;
 }
 
-bool DmpStartVelocityController::getRobotState(){
+bool DmpStartVelocityController::saveRobotState(){
     // check for initial joint positions of the robot
     auto state_interface = robotHardware->get<franka_hw::FrankaStateInterface>();
     if (state_interface == nullptr) {
@@ -169,7 +169,7 @@ bool DmpStartVelocityController::getRobotState(){
         auto state_handle = state_interface->getHandle("panda_robot");
 
         for (size_t i = 0; i < dofs; i++) {
-            qInit[i] = state_handle.getRobotState().q_d[i];
+            robotQ[i] = state_handle.getRobotState().q_d[i];
         }
     } catch (const hardware_interface::HardwareInterfaceException& e) {
         ROS_ERROR_STREAM(
@@ -187,10 +187,10 @@ void DmpStartVelocityController::initDmpObjects( double &dt, std::vector<double>
 
 bool DmpStartVelocityController::checkRobotInit() {
     // check for initial joint positions of the robot
-    getRobotState();
+    saveRobotState();
 
     for (size_t i = 0; i < dofs; i++) {
-        if (std::abs(qInit[i] - dmpQ0[i]) > 0.05) { //TODO: is this a good threshold?
+        if (std::abs(robotQ[i] - dmpQ0[i]) > 0.05) { //TODO: is this a good threshold?
             ROS_ERROR_STREAM(
                         "DmpStartVelocityController: Robot is not in the expected starting position for "
                         "this dmp.");
@@ -297,7 +297,7 @@ std::vector<double> DmpStartVelocityController::addVectors(const std::vector<dou
 
 void DmpStartVelocityController::sampleInitalQ() {
     // adapt the dmp to the initial joint positions of the robot
-    std::vector<double> qInitV(qInit.begin(), qInit.end());
+    std::vector<double> qInitV(robotQ.begin(), robotQ.end());
     std::vector<double> offsetInitV = getRandomVectorOffset();
     std::vector<double> qInitWithOffsetV = addVectors(qInitV,offsetInitV);
     dmpInitialize.setInitialPosition(qInitWithOffsetV); // also initializes the dmp trajectory (resetting the canonical sytem)

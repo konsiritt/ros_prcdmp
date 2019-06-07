@@ -48,8 +48,8 @@ class DmpStartVelocityController : public controller_interface::MultiInterfaceCo
 
   bool loadDmpData(int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
                    std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB);
-  // sets qInit to the current robot state
-  bool getRobotState();
+
+  bool saveRobotState();// updates robotQ to the current robot state
 
   void initDmpObjects(double &dt, std::vector<double> &y0v, std::vector<double> &goalv,
                       std::vector<double> &gainA, std::vector<double> &gainB);
@@ -92,7 +92,7 @@ class DmpStartVelocityController : public controller_interface::MultiInterfaceCo
 
   // trajectory specific members
   std::array<double,7> dmpQ0; // initial joint position in the dmp
-  std::array<double,7> qInit; // current joint position of the robot
+  std::array<double,7> robotQ; // current joint position of the robot
   std::string robotIp;
 
   // states concerning robot and communication

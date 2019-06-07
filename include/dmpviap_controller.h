@@ -47,8 +47,8 @@ class DmpViapController : public controller_interface::MultiInterfaceController<
 
   bool loadDmpData(int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
                    std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB);
-  // sets qInit to the current robot state
-  bool getRobotState();
+
+  bool saveRobotState();// updates robotQ to the current robot state
 
   void initDmpObjects(double &dt, std::vector<double> &y0v, std::vector<double> &goalv,
                       std::vector<double> &gainA, std::vector<double> &gainB);
@@ -86,7 +86,7 @@ class DmpViapController : public controller_interface::MultiInterfaceController<
 
   // trajectory specific members
   std::vector<double> dmpQ0; // initial joint position in the dmp
-  std::array<double,7> qInit; // current joint position of the robot
+  std::array<double,7> robotQ; // current joint position of the robot
   // safe via point for recovery after passing the obstacle
   std::vector<double> viaPointQ = {0.512606,-0.692921,-0.208256,-1.87101,1.2428,1.86703,-0.287594};//{0.57189,0.293397,0.392036,-1.20435,1.32246,2.51705,-0.55729};//
 
