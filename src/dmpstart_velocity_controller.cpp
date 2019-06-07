@@ -33,11 +33,6 @@ bool DmpStartVelocityController::init(hardware_interface::RobotHW* robot_hardwar
   std::vector<double> robotQ0(robotQ.begin(), robotQ.end());
   initDmpObjects(dt, robotQ0, initialPosition, gainA, gainB);
 
-//  // publish, so that the state of the robot (initialized or not) is known to the manager
-//  std_msgs::Bool msg;
-//  msg.data = notInitializedDMP;
-//  pub.publish(msg);
-
   setupSampling();
   return true;
 }
@@ -82,6 +77,10 @@ void DmpStartVelocityController::initROSCommunication(){
 
     if (!nodeHandle->getParam("/dmp_velocity_controller/std_offset_q0", stdOffset)) {
       ROS_ERROR("DmpStartVelocityController: Invalid or no std_offset_q0 parameter provided; provide e.g. std_offset_q0:=0.05");
+    }
+
+    if (!nodeHandle->getParam("/dmp_velocity_controller/seed", seed)) {
+      ROS_ERROR("DmpStartVelocityController: Invalid or no std_offset_q0 parameter provided; provide e.g. seed:=666");
     }
 
     subFrankaStates = nodeHandle->subscribe("/franka_state_controller/franka_states", 1, &DmpStartVelocityController::frankaStateCallback, this);
@@ -272,9 +271,9 @@ void DmpStartVelocityController::frankaStateCallback(const franka_msgs::FrankaSt
     currentRobotMode = msg->robot_mode;
 }
 
-void DmpStartVelocityController::setupSampling(){
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    generator = std::default_random_engine (seed);
+void DmpStartVelocityController::setupSampling(){    
+    unsigned tempSeed = (unsigned) seed;
+    generator = std::default_random_engine (tempSeed);
     distribution = std::normal_distribution<double>(meanOffset,stdOffset);
 }
 

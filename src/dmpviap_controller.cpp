@@ -66,11 +66,13 @@ void DmpViapController::update(const ros::Time& /* time */,
 
     dq = dmpInitialize.simpleStep(externalForce, tau);
 
+    ROS_INFO("DmpViapController: checkRobotState();");
     checkRobotState();
 
     checkStoppingCondition();
 
     commandRobot(dq);
+    ROS_INFO("DmpViapController: done commanding to robot");
 }
 
 

@@ -148,6 +148,10 @@ void DmpVelocityController::initROSCommunication(){
       ROS_ERROR("DmpStartVelocityController: Invalid or no logging parameter provided; provide e.g. logging:=true");
     }
 
+    if (!nodeHandle->getParam("/dmp_velocity_controller/seed", seed)) {
+      ROS_ERROR("DmpStartVelocityController: Invalid or no logging parameter provided; provide e.g. seed:=666");
+    }
+
     collisionClient = nodeHandle->serviceClient<franka_control::SetForceTorqueCollisionBehavior>("/franka_control/set_force_torque_collision_behavior");
 }
 
@@ -310,7 +314,6 @@ void DmpVelocityController::checkRobotState() {
                     std_msgs::Bool msg;
                     msg.data = true;
                     pubError.publish(msg);
-                    ROS_INFO("error recovery successful");
                     flagPubErr = true;
                 }
 
@@ -475,9 +478,9 @@ bool DmpVelocityController::isValidVelocity(std::vector<double> velocitiesToAppl
     return true;
 }
 
-void DmpVelocityController::setupSampling(){
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    generator = std::default_random_engine (seed);
+void DmpVelocityController::setupSampling(){    
+    unsigned tempSeed = (unsigned) seed;
+    generator = std::default_random_engine (tempSeed);
     distribution = std::normal_distribution<double>(meanOffset,stdOffset);
 }
 

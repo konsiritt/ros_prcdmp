@@ -144,6 +144,7 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
   //include random generator to sample initial position
   std::default_random_engine generator;
   std::normal_distribution<double> distribution;
+  int seed = 0; //= std::chrono::system_clock::now().time_since_epoch().count();
   double meanOffset = 0.0;
   double stdOffset = 0.05;
 

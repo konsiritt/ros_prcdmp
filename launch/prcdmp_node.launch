@@ -5,6 +5,7 @@
   <arg name="data_set" />
   <arg name="std_offset_q0" default="0.05" />
   <arg name="logging" default="true" />
+  <arg name="seed" default="666" />
 
  <!-- from franka_control.launch -->  
  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find franka_description)/robots/panda_arm_hand.urdf.xacro'" if="$(arg load_gripper)" />
@@ -42,6 +43,7 @@
   <param name="dmp_velocity_controller/data_set" value="$(arg data_set)" type="str" />
   <param name="dmp_velocity_controller/std_offset_q0" value="$(arg std_offset_q0)" type="double" />
   <param name="dmp_velocity_controller/logging" value="$(arg logging)" type="bool" />
+  <param name="dmp_velocity_controller/seed" value="$(arg seed)" type="int" />
   <node name="controller_spawner_stopped" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--stopped dmp_velocity_controller"/>
   <node name="controller_spawner_via_stopped" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--stopped dmpviap_controller"/>
   <!--
