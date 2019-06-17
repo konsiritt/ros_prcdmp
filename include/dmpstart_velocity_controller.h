@@ -64,7 +64,7 @@ class DmpStartVelocityController : public controller_interface::MultiInterfaceCo
 
   bool errorRecovery();
 
-  void frankaStateCallback(const franka_msgs::FrankaState::ConstPtr& msg);
+  void frankaStateCallback(const std_msgs::Bool& msg);//(const franka_msgs::FrankaState::ConstPtr& msg);
 
   void setupSampling();
   std::vector<double> getRandomVectorOffset();

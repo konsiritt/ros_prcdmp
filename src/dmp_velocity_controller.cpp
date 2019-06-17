@@ -99,7 +99,7 @@ void DmpVelocityController::update(const ros::Time& /* time */,
         saveTime.push_back(elapsedTime.toSec());
     }
 
-    checkRobotState();
+//    checkRobotState();
 
     checkStoppingCondition();
 
@@ -119,7 +119,6 @@ void DmpVelocityController::stopping(const ros::Time& /*time*/) {
     ROS_INFO("DmpVelocityController: batch size published: #%d", ctBatch.samples.size());
     //}
     refIter = -1;
-    checkRobotState();
 
     if (logging){
         ROS_INFO("logging is on: dumping last dmp trajectory to file");
@@ -138,7 +137,7 @@ void DmpVelocityController::initROSCommunication(){
     // subscriber that handles changes to the smoothed dmp coupling term
     subCouplingSmoothed = nodeHandle->subscribe("/coupling_term_estimator/coupling_term/smoothed", 1, &DmpVelocityController::ctSmoothedCallback, this);
 
-    subFrankaStates = nodeHandle->subscribe("/franka_state_controller/franka_states", 1, &DmpVelocityController::frankaStateCallback, this);
+    subFrankaStates = nodeHandle->subscribe("/mdp_manager/errors", 1, &DmpVelocityController::frankaStateCallback, this);
 
     if (!nodeHandle->getParam("/dmp_velocity_controller/std_offset_q0", stdOffset)) {
       ROS_ERROR("DmpStartVelocityController: Invalid or no std_offset_q0 parameter provided; provide e.g. std_offset_q0:=0.05");
@@ -427,8 +426,19 @@ void DmpVelocityController::ctSmoothedCallback(const common_msgs::CouplingTerm::
     dmp.setCouplingTerm(coupling);
 }
 
-void DmpVelocityController::frankaStateCallback(const franka_msgs::FrankaState::ConstPtr& msg) {
-    currentRobotMode = msg->robot_mode;
+void DmpVelocityController::frankaStateCallback(const std_msgs::Bool& msg) {
+    //currentRobotMode = msg->robot_mode;
+    ROS_INFO("ROBOT_MODE_REFLEX=4: Attempting error recovery!");
+    if (errorRecovery())
+    {
+        if (!flagPubErr) {
+            std_msgs::Bool msg;
+            msg.data = true;
+            pubError.publish(msg);
+            flagPubErr = true;
+        }
+
+    };
 }
 
 bool DmpVelocityController::isValidVelocity(std::vector<double> velocitiesToApply) {
@@ -469,10 +479,13 @@ bool DmpVelocityController::isValidVelocity(std::vector<double> velocitiesToAppl
 
     // check cartesian position of End effector with virtual wall height of tabletop
     if (futurePosEnd[14] < virtWallZ_EE || futurePosFlange[14] < virtWallZ_F || futurePosJoint7[14] < virtWallZ_J7 || futurePosJoint6[14] < virtWallZ_J6){
-        std_msgs::Bool msg;
-        msg.data = false;
-        pubError.publish(msg);
-        ROS_INFO("DmpVelocityController: virtual wall hit");
+        if (!flagPubErr) {
+            std_msgs::Bool msg;
+            msg.data = false;
+            pubError.publish(msg);
+            ROS_INFO("DmpVelocityController: virtual wall hit");
+            flagPubErr = true;
+        }
     }
 
     return true;

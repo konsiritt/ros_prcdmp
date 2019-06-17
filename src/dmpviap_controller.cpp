@@ -66,13 +66,13 @@ void DmpViapController::update(const ros::Time& /* time */,
 
     dq = dmpInitialize.simpleStep(externalForce, tau);
 
-    ROS_INFO("DmpViapController: checkRobotState();");
-    checkRobotState();
+    //ROS_INFO("DmpViapController: checkRobotState();");
+    //checkRobotState();
 
     checkStoppingCondition();
 
     commandRobot(dq);
-    ROS_INFO("DmpViapController: done commanding to robot");
+    //ROS_INFO("DmpViapController: done commanding to robot");
 }
 
 
@@ -86,7 +86,7 @@ void DmpViapController::initROSCommunication(){
     // publisher to send end of initialization signal
     pub = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_notInit", 1);
 
-    subFrankaStates = nodeHandle->subscribe("/franka_state_controller/franka_states", 1, &DmpViapController::frankaStateCallback, this);
+    subFrankaStates = nodeHandle->subscribe("/mdp_manager/errors", 1, &DmpViapController::frankaStateCallback, this);
 }
 
 bool DmpViapController::checkRobotSetup(){
@@ -270,8 +270,12 @@ bool DmpViapController::errorRecovery(){
     }
 }
 
-void DmpViapController::frankaStateCallback(const franka_msgs::FrankaState::ConstPtr& msg) {
-    currentRobotMode = msg->robot_mode;
+void DmpViapController::frankaStateCallback(const std_msgs::Bool& msg) {
+//    currentRobotMode = msg->robot_mode;
+    ROS_INFO("ROBOT_MODE_REFLEX=4: Attempting error recovery!");
+    if (errorRecovery())
+    {
+    };
 }
 
 }  // namespace prcdmp_node

@@ -63,7 +63,7 @@ class DmpViapController : public controller_interface::MultiInterfaceController<
 
   bool errorRecovery();
 
-  void frankaStateCallback(const franka_msgs::FrankaState::ConstPtr& msg);
+  void frankaStateCallback(const std_msgs::Bool& msg);//(const franka_msgs::FrankaState::ConstPtr& msg);
 
   // handles for robot
   hardware_interface::RobotHW* robotHardware;

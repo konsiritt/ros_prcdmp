@@ -76,7 +76,7 @@ class DmpVelocityController : public controller_interface::MultiInterfaceControl
 
   void ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg);
   void ctSmoothedCallback(const common_msgs::CouplingTerm::ConstPtr& msg);
-  void frankaStateCallback(const franka_msgs::FrankaState::ConstPtr& msg);
+  void frankaStateCallback(const std_msgs::Bool& msg);//(const franka_msgs::FrankaState::ConstPtr& msg);
 
   bool isValidVelocity(std::vector<double> velocitiesToApply);
 

@@ -58,7 +58,7 @@ void DmpStartVelocityController::update(const ros::Time& /* time */,
 
   dq = dmpInitialize.simpleStep(externalForce, tau);
 
-  checkRobotState();
+//  checkRobotState();
 
   checkStoppingCondition();
 
@@ -83,7 +83,7 @@ void DmpStartVelocityController::initROSCommunication(){
       ROS_ERROR("DmpStartVelocityController: Invalid or no std_offset_q0 parameter provided; provide e.g. seed:=666");
     }
 
-    subFrankaStates = nodeHandle->subscribe("/franka_state_controller/franka_states", 1, &DmpStartVelocityController::frankaStateCallback, this);
+    subFrankaStates = nodeHandle->subscribe("/mdp_manager/errors", 1, &DmpStartVelocityController::frankaStateCallback, this);
 
 }
 
@@ -267,8 +267,12 @@ bool DmpStartVelocityController::errorRecovery(){
     }
 }
 
-void DmpStartVelocityController::frankaStateCallback(const franka_msgs::FrankaState::ConstPtr& msg) {
-    currentRobotMode = msg->robot_mode;
+void DmpStartVelocityController::frankaStateCallback(const std_msgs::Bool& msg) {
+    //currentRobotMode = msg->robot_mode;
+    ROS_INFO("ROBOT_MODE_REFLEX=4: Attempting error recovery!");
+    if (errorRecovery())
+    {
+    };
 }
 
 void DmpStartVelocityController::setupSampling(){    
