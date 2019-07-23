@@ -40,7 +40,7 @@ catkin_package(
   DEPENDS Franka
 )
 
-INCLUDE_DIRECTORIES(include)
+INCLUDE_DIRECTORIES(include ${catkin_INCLUDE_DIRS})
 
 add_subdirectory(src)
 
