@@ -1,0 +1,18 @@
+<?xml version="1.0" ?>
+<launch>
+  <arg name="load_gripper" default="true" />
+  <arg name="data_set" />
+  <arg name="std_offset_q0" default="0.05" />
+  <arg name="logging" default="true" />
+  <arg name="seed" default="666" />
+
+
+
+  <node name="simControlNode" pkg="prcdmp_node" type="simControlNode" output="screen" required="true">
+    <param name="/data_set" value="$(arg data_set)" type="str" />
+    <param name="/std_offset_q0" value="$(arg std_offset_q0)" type="double" />
+    <param name="/logging" value="$(arg logging)" type="bool" />
+    <param name="/seed" value="$(arg seed)" type="int" />
+  </node>
+
+</launch>

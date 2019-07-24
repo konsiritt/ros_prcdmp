@@ -59,6 +59,9 @@ target_link_libraries(serviceDummy ${catkin_LIBRARIES})
 add_executable(debugDummy src/debugDummy.cpp)
 target_link_libraries(debugDummy ${catkin_LIBRARIES} ${Franka_LIBRARIES} DMP UTILS Eigen3::Eigen jsoncpp prcdmp_node)
 
+add_executable(simControlNode src/simControlNode.cpp)
+target_link_libraries(simControlNode ${catkin_LIBRARIES} ${Franka_LIBRARIES} DMP UTILS Eigen3::Eigen jsoncpp prcdmp_node)
+
 add_dependencies(prcdmp_node
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
