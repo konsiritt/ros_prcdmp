@@ -136,6 +136,7 @@ void simControlNode::initROSCommunication(){
     }    
 
     // follow joint trajectories using actions. these need a goal to be set
+    ROS_INFO("adding action goals");
     actionGoal.trajectory.joint_names.push_back("panda_joint1");
     actionGoal.trajectory.joint_names.push_back("panda_joint2");
     actionGoal.trajectory.joint_names.push_back("panda_joint3");
@@ -144,7 +145,10 @@ void simControlNode::initROSCommunication(){
     actionGoal.trajectory.joint_names.push_back("panda_joint6");
     actionGoal.trajectory.joint_names.push_back("panda_joint7");
 
+    ROS_INFO("resize");
+    actionGoal.trajectory.points.resize(1);
     actionGoal.trajectory.points[0].positions.resize(7);
+    ROS_INFO("goal duration");
     actionGoal.trajectory.points[0].time_from_start = ros::Duration(0.001);
 }
 
