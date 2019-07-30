@@ -5,7 +5,7 @@
 namespace prcdmp_node {
 
 simControlNode::simControlNode(ros::NodeHandle& node_handle):
-trajClient("/panda_hand_controller/follow_joint_trajectory", true){
+trajClient("/panda_arm_controller/follow_joint_trajectory", true){
     init(node_handle);
     starting(ros::Time::now());
 }
@@ -65,6 +65,10 @@ void simControlNode::starting(const ros::Time& /* time */) {
         saveRobotQ.clear();
         saveTime.clear();
     }
+
+    actionGoal.trajectory.points[0].time_from_start = ros::Duration(2.0);
+    actionGoal.trajectory.points[0].positions = dmp.getY();
+    trajClient.sendGoal(actionGoal);
 
 
     elapsedTime = ros::Duration(0.0);
@@ -221,6 +225,7 @@ void simControlNode::commandRobot(const std::vector<double> &dq){
     }
 
     //trajClient.waitForServer();
+    actionGoal.trajectory.points[0].time_from_start = ros::Duration(0.001);
     actionGoal.trajectory.points[0].positions = dmp.getY();
     trajClient.sendGoal(actionGoal);
     //trajClient.waitForResult(ros::Duration(1.0));
