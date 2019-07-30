@@ -69,6 +69,14 @@ void simControlNode::starting(const ros::Time& /* time */) {
     actionGoal.trajectory.points[0].time_from_start = ros::Duration(2.0);
     actionGoal.trajectory.points[0].positions = dmp.getY();
     trajClient.sendGoal(actionGoal);
+    trajClient.waitForResult(ros::Duration(2.0));
+    if (trajClient.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
+        ROS_INFO("Robot initialized successfully");
+    }
+    else
+    {
+        ROS_INFO("Robot initialized unsuccessfull");
+    }
 
 
     elapsedTime = ros::Duration(0.0);
