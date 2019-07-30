@@ -4,7 +4,8 @@
 
 namespace prcdmp_node {
 
-simControlNode::simControlNode(ros::NodeHandle& node_handle){
+simControlNode::simControlNode(ros::NodeHandle& node_handle):
+trajClient("/panda_hand_controller/follow_joint_trajectory", true){
     init(node_handle);
     starting(ros::Time::now());
 }
@@ -41,7 +42,7 @@ bool simControlNode::init(ros::NodeHandle& node_handle) {
 }
 
 void simControlNode::starting(const ros::Time& /* time */) {
-    ROS_INFO("simControlNode: including ct: starting()");
+    ROS_INFO("simControlNode: starting()");
     // initialize the dmp trajectory (resetting the canonical sytem)
     dmp.resettState();
     //assume initialization
@@ -88,8 +89,6 @@ void simControlNode::update(const ros::Time& /* time */,
 
     checkStoppingCondition();
 
-    isValidVelocity(dq);
-
     commandRobot(dq);
 }
 
@@ -134,7 +133,19 @@ void simControlNode::initROSCommunication(){
 
     if (!nodeHandle->getParam("/simControlNode/seed", seed)) {
       ROS_ERROR("simControlNode: Invalid or no logging parameter provided; provide e.g. seed:=666");
-    }
+    }    
+
+    // follow joint trajectories using actions. these need a goal to be set
+    actionGoal.trajectory.joint_names.push_back("panda_joint1");
+    actionGoal.trajectory.joint_names.push_back("panda_joint2");
+    actionGoal.trajectory.joint_names.push_back("panda_joint3");
+    actionGoal.trajectory.joint_names.push_back("panda_joint4");
+    actionGoal.trajectory.joint_names.push_back("panda_joint5");
+    actionGoal.trajectory.joint_names.push_back("panda_joint6");
+    actionGoal.trajectory.joint_names.push_back("panda_joint7");
+
+    actionGoal.trajectory.points[0].positions.resize(7);
+    actionGoal.trajectory.points[0].time_from_start = ros::Duration(0.001);
 }
 
 
@@ -205,19 +216,10 @@ void simControlNode::commandRobot(const std::vector<double> &dq){
         it++;
     }
 
-    actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction> tempClient("/panda_hand_controller/follow_joint_trajectory", true);
-    tempClient.waitForServer();
-    control_msgs::FollowJointTrajectoryGoal goalTrajectory;
-    tempClient.sendGoal(goalTrajectory);
-    tempClient.waitForResult(ros::Duration(1.0));
-    if (tempClient.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
-        ROS_INFO("error recovery successfull");
-    }
-    else
-    {
-        ROS_INFO("error recovery unsuccessfull");
-    }
-
+    //trajClient.waitForServer();
+    actionGoal.trajectory.points[0].positions = dmp.getY();
+    trajClient.sendGoal(actionGoal);
+    //trajClient.waitForResult(ros::Duration(1.0));
 }
 
 //TODO: adapt to react to a change of the coupling term as a topic
@@ -349,11 +351,13 @@ int main(int argc, char** argv) {
   ros::AsyncSpinner spinner(4);
   spinner.start();
 
-prcdmp_node::simControlNode controlNodeObj(public_node_handle);
+prcdmp_node::simControlNode controlNodeObj(node_handle);
 
   ros::Time last_time = ros::Time::now();
+  ROS_INFO("Starting simulated control loop");
   while (ros::ok()) {
 
+      ROS_INFO("control loop");
       // Run control loop. Will exit if the controller is switched.
       ros::Time now = ros::Time::now();
       controlNodeObj.update(now, now - last_time);

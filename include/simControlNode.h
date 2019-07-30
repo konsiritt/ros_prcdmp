@@ -89,6 +89,10 @@ private:
  common_msgs::MDPSample ctSample;
  ros::ServiceClient collisionClient;
 
+ // ROS action command for robot trajectory signals
+ actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction> trajClient;
+ control_msgs::FollowJointTrajectoryGoal actionGoal;
+
  // states concerning communication and robot
  uint8_t currentRobotMode;
  bool flagPubEx  = false;
