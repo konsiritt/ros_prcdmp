@@ -50,7 +50,7 @@ void simControlNode::starting(const ros::Time& /* time */) {
     flagPubErr = false;
     refIter = 0;
 
-    updateDmpInit();
+    sampleDmpInit();
 
     sampleGoalQ();
 
@@ -69,7 +69,7 @@ void simControlNode::starting(const ros::Time& /* time */) {
     actionGoal.trajectory.points[0].time_from_start = ros::Duration(2.0);
     actionGoal.trajectory.points[0].positions = dmp.getY();
     trajClient.sendGoal(actionGoal);
-    trajClient.waitForResult(ros::Duration(2.0));
+    trajClient.waitForResult(ros::Duration(3.0));
     if (trajClient.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
         ROS_INFO("Robot initialized successfully");
     }
@@ -148,7 +148,6 @@ void simControlNode::initROSCommunication(){
     }    
 
     // follow joint trajectories using actions. these need a goal to be set
-    ROS_INFO("adding action goals");
     actionGoal.trajectory.joint_names.push_back("panda_joint1");
     actionGoal.trajectory.joint_names.push_back("panda_joint2");
     actionGoal.trajectory.joint_names.push_back("panda_joint3");
@@ -156,12 +155,8 @@ void simControlNode::initROSCommunication(){
     actionGoal.trajectory.joint_names.push_back("panda_joint5");
     actionGoal.trajectory.joint_names.push_back("panda_joint6");
     actionGoal.trajectory.joint_names.push_back("panda_joint7");
-
-    ROS_INFO("resize");
     actionGoal.trajectory.points.resize(1);
     actionGoal.trajectory.points[0].positions.resize(7);
-    ROS_INFO("goal duration");
-    actionGoal.trajectory.points[0].time_from_start = ros::Duration(0.001);
 }
 
 
@@ -185,6 +180,7 @@ bool simControlNode::loadDmpData(int &nBFs, double &dt, std::vector<double> &y0v
     tau = 1.0/timeSpan;
     //------initialize arrays from config file----------------------
     moveJsonArrayToVec(config.getDmpJson()["q0"], y0v);
+    dmpQ0 = y0v;
     moveJsonArrayToVec(config.getDmpJson()["goal"], goalv);
     moveJsonArrayToVec(config.getDmpJson()["gain_a"], gainA);
     moveJsonArrayToVec(config.getDmpJson()["gain_b"], gainB);
@@ -313,8 +309,10 @@ std::vector<double> simControlNode::addVectors(const std::vector<double> &elemen
     return returnVector;
 }
 
-void simControlNode::updateDmpInit(){
-    std::vector<double> tempQ(robotQ.begin(),robotQ.end());
+void simControlNode::sampleDmpInit(){
+    // adapt the dmp to the initial joint positions of the robot
+    std::vector <double> tempQ = sampleVector(dmpQ0);
+
     dmp.setInitialPosition(tempQ);
     dmp.resettState();
 }
@@ -322,8 +320,7 @@ void simControlNode::updateDmpInit(){
 void simControlNode::sampleGoalQ(){
     // adapt the dmp to the initial joint positions of the robot
     std::vector<double> dmpGoalV(dmpGoal.begin(), dmpGoal.end());
-    std::vector<double> offsetGoalV = getRandomVectorOffset();
-    std::vector<double> qGoalWithOffsetV = addVectors(dmpGoalV,offsetGoalV);
+    std::vector<double> qGoalWithOffsetV = sampleVector(dmpGoalV);
     for (int iter=0;iter<dmpGoal.size();iter++){
         dmpGoal[iter] = qGoalWithOffsetV[iter];
     }
@@ -334,6 +331,12 @@ void simControlNode::sampleGoalQ(){
     std::vector <double> tempGoal (dmpGoal.begin(),dmpGoal.end());
     tempMsg.data = tempGoal;
     pubGoal.publish(tempMsg);
+}
+
+std::vector<double> simControlNode::sampleVector(const std::vector<double> inputVector) {
+    std::vector<double> offsetV = getRandomVectorOffset();
+    std::vector<double> inWithOffsetV = addVectors(inputVector,offsetV);
+    return inWithOffsetV;
 }
 
 void simControlNode::computeGoalOffset(){

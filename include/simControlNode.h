@@ -66,8 +66,9 @@ private:
  void setupSampling();
  std::vector<double> getRandomVectorOffset();
  std::vector<double> addVectors(const std::vector<double>& element1, const std::vector<double>& element2);
- void updateDmpInit();
+ void sampleDmpInit();
  void sampleGoalQ();
+ std::vector<double> sampleVector (const std::vector<double> inputVector);
 
  void computeGoalOffset();
 
@@ -106,7 +107,7 @@ private:
  std::vector<double> externalForce;
 
  // trajectory specific members
- std::array<double,7> dmpQ0; // initial joint position in the dmp
+ std::vector <double> dmpQ0; // initial joint position in the dmp
  boost::array<double,7> dmpGoal; // goal joint position in the dmp
  boost::array<double,7> robotQ; // current joint position of the robot
  std::string robotIp;
