@@ -3,7 +3,7 @@
   <arg name="load_gripper" default="true" />
   <arg name="data_set" />
   <arg name="std_offset_q0" default="0.05" />
-  <arg name="logging" default="true" />
+  <arg name="logging" default="false" />
   <arg name="seed" default="666" />
 
 

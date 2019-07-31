@@ -72,6 +72,10 @@ void simControlNode::starting(const ros::Time& /* time */) {
     trajClient.waitForResult(ros::Duration(3.0));
     if (trajClient.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
         ROS_INFO("Robot initialized successfully");
+        // send message that robot is initialized, so that mdp manager knows robot is good to go
+        std_msgs::Bool msg;
+        msg.data = false;
+        pubInit.publish(msg);
     }
     else
     {
@@ -82,7 +86,7 @@ void simControlNode::starting(const ros::Time& /* time */) {
     elapsedTime = ros::Duration(0.0);
 }
 
-void simControlNode::update(const ros::Time& /* time */,
+bool simControlNode::update(const ros::Time& /* time */,
                                    const ros::Duration& period) {
     elapsedTime += period;
 
@@ -99,9 +103,11 @@ void simControlNode::update(const ros::Time& /* time */,
         saveTime.push_back(elapsedTime.toSec());
     }
 
-    checkStoppingCondition();
+    bool done = checkStoppingCondition();
 
     commandRobot(dq);
+
+    return done;
 }
 
 void simControlNode::stopping(const ros::Time& /*time*/) {
@@ -127,6 +133,7 @@ void simControlNode::initROSCommunication(){
     pubError = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/error_occured", 1);
     pubBatch = nodeHandle->advertise<common_msgs::SamplesBatch>("/prcdmp/episodic_batch", 5);
     pubGoal = nodeHandle->advertise<std_msgs::Float64MultiArray>("/prcdmp/q_goal", 1);
+    pubInit = nodeHandle->advertise<std_msgs::Bool>("/prcdmp/flag_notInit", 1);
 
     // subscriber that handles changes to the dmp coupling term: TODO: change to coupling term
     subCoupling = nodeHandle->subscribe("/coupling_term_estimator/coupling_term", 1, &simControlNode::ctCallback, this);
@@ -134,6 +141,8 @@ void simControlNode::initROSCommunication(){
     subCouplingSmoothed = nodeHandle->subscribe("/coupling_term_estimator/coupling_term/smoothed", 1, &simControlNode::ctSmoothedCallback, this);
 
     subFrankaStates = nodeHandle->subscribe("/joint_states", 1, &simControlNode::frankaStateCallback, this);
+
+    subMdpReady = nodeHandle->subscribe("/mdp_manager/ready_for_dmp", 10, &simControlNode::mdpReadyCallback, this);
 
     if (!nodeHandle->getParam("/simControlNode/std_offset_q0", stdOffset)) {
       ROS_ERROR("simControlNode: Invalid or no std_offset_q0 parameter provided; provide e.g. std_offset_q0:=0.05");
@@ -206,7 +215,7 @@ void simControlNode::initDmpObjects(int &nBFs, double &dt, std::vector<double> &
 }
 
 
-void simControlNode::checkStoppingCondition(){
+bool simControlNode::checkStoppingCondition(){
     //TODO: find appropriate stopping behavior: e.g. (near) zero commanded velocities
     if (dmp.getTrajFinished()) {
         //publish the changed states to a topic so that the controller_manager can switch controllers
@@ -217,7 +226,9 @@ void simControlNode::checkStoppingCondition(){
             pubExec.publish(msg);
             flagPubEx = true;
         }
+        return true;
     }
+    return false;
 }
 
 void simControlNode::commandRobot(const std::vector<double> &dq){
@@ -277,6 +288,10 @@ void simControlNode::frankaStateCallback(const sensor_msgs::JointState& msg) {
     for (size_t iter = 0; iter < dofs; iter++) {
         robotQ[iter] = msg.position[iter+2];
     }
+}
+
+void simControlNode::mdpReadyCallback (const std_msgs::Bool::ConstPtr& msg) {
+    mdpReady = msg->data;
 }
 
 bool simControlNode::isValidVelocity(std::vector<double> velocitiesToApply) {
@@ -358,12 +373,12 @@ void simControlNode::saveDmpData(){
     UTILS::writeTrajTimeToText(saveRobotQ, saveTime, robotQsPath);
 }
 
-}  // namespace prcdmp_node
+}  // namespace prcdmp_node   
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "sim_control_node");
   ros::NodeHandle public_node_handle;
-  ros::NodeHandle node_handle("~");
+  ros::NodeHandle node_handle("~");  
 
   ros::Rate loop_rate(1000);
 
@@ -371,24 +386,37 @@ int main(int argc, char** argv) {
   ros::AsyncSpinner spinner(4);
   spinner.start();
 
-prcdmp_node::simControlNode controlNodeObj(node_handle);
+  prcdmp_node::simControlNode controlNodeObj(node_handle);
 
+  bool done = false;
+  bool mdpReady = true;
   ros::Time last_time = ros::Time::now();
-  ROS_INFO("Starting simulated control loop");
   while (ros::ok()) {
-
-      ROS_INFO("control loop");
-      // Run control loop. Will exit if the controller is switched.
-      ros::Time now = ros::Time::now();
-      controlNodeObj.update(now, now - last_time);
-      last_time = now;
-
-      if (!ros::ok()) {
-          return 0;
+      ros::Duration(0.5).sleep();
+      // check if the mdp manager is ready before allowing rolling out of dmp
+      mdpReady = controlNodeObj.getMdpReady();
+      if (mdpReady) {
+          done = false;
       }
-      ros::spinOnce();
 
-      loop_rate.sleep();
+      while (!done && mdpReady) {
+          // Run control loop. Will exit if the controller is switched.
+          ros::Time now = ros::Time::now();
+          done = controlNodeObj.update(now, now - last_time);
+          last_time = now;
+
+          if (!ros::ok()) {
+              return 0;
+          }
+          if (done) {
+              // when the dmp is done once, stop the dmp trajectory execution and restart again
+              controlNodeObj.stopping(ros::Time::now());
+              controlNodeObj.starting(ros::Time::now());
+          }
+          ros::spinOnce();
+
+          loop_rate.sleep();
+      }
   }
 
   return 0;

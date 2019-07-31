@@ -40,9 +40,11 @@ public:
  simControlNode(ros::NodeHandle& node_handle);
 
  bool init(ros::NodeHandle& node_handle);
- void update(const ros::Time&, const ros::Duration& period);
+ bool update(const ros::Time&, const ros::Duration& period);
  void starting(const ros::Time&);
  void stopping(const ros::Time&);
+
+ bool getMdpReady() {return mdpReady;};
 
 private:
  void initROSCommunication();
@@ -53,13 +55,14 @@ private:
  void initDmpObjects(int &nBFs, double &dt,std::vector<double> &y0v, std::vector<double> &goalv,
                     std::vector<std::vector<double>> &w, std::vector<double> &gainA, std::vector<double> &gainB);
 
- void checkStoppingCondition();
+ bool checkStoppingCondition();
 
  void commandRobot(const std::vector<double> &dq);
 
  void ctCallback(const common_msgs::CouplingTerm::ConstPtr& msg);
  void ctSmoothedCallback(const common_msgs::CouplingTerm::ConstPtr& msg);
- void frankaStateCallback(const sensor_msgs::JointState &msg);//(const franka_msgs::FrankaState::ConstPtr& msg);
+ void frankaStateCallback(const sensor_msgs::JointState& msg);//(const franka_msgs::FrankaState::ConstPtr& msg);
+ void mdpReadyCallback(const std_msgs::Bool::ConstPtr& msg);
 
  bool isValidVelocity(std::vector<double> velocitiesToApply);
 
@@ -82,10 +85,12 @@ private:
  ros::Subscriber subCoupling;
  ros::Subscriber subCouplingSmoothed;
  ros::Subscriber subFrankaStates;
+ ros::Subscriber subMdpReady;
  ros::Publisher pubExec;
  ros::Publisher pubError;
  ros::Publisher pubBatch;
  ros::Publisher pubGoal;
+ ros::Publisher pubInit;
  common_msgs::SamplesBatch ctBatch;
  common_msgs::MDPSample ctSample;
  ros::ServiceClient collisionClient;
@@ -99,6 +104,7 @@ private:
  bool flagPubEx  = false;
  bool flagPubErr = false;
  bool logging = false;
+ bool mdpReady = false;
 
  // dmp specific members
  int dofs;
